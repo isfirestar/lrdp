@@ -1,0 +1,12 @@
+{
+    "entry" : {
+        "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+        "entryproc" : "dep_entry",
+        "exitproc" : "dep_atexit",
+        "entrytimer" : {
+            "interval" : 1000,
+            "timerproc" : "dep_on_timer",
+            "contextsize" : 128
+        }
+    }
+}
