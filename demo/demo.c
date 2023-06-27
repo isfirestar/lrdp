@@ -3,11 +3,17 @@
 #include <stdint.h>
 
 #include "ifos.h"
+#include "monotonic.h"
 
-int dep_entry(int argc, char **argv)
+int dep_pre_init(int argc, char **argv)
 {
-    printf("dep_entry\n");
+    printf("dep_pre_init\n");
     return 0;
+}
+
+void dep_post_init(void *context, unsigned int ctxsize)
+{
+    *(uint64_t *)context = getMonotonicUs() / 1000;
 }
 
 void dep_atexit(void)
@@ -18,19 +24,15 @@ void dep_atexit(void)
 void dep_on_timer(void *context, unsigned int ctxsize)
 {
     uint64_t previous,now;
-    struct timespec tv;
 
     previous = *(uint64_t *)context;
-
-    clock_gettime(CLOCK_MONOTONIC, (struct timespec *)&tv);
-    now = tv.tv_sec * 1000 + tv.tv_nsec / 1000000;
+    now = getMonotonicUs() / 1000;
+    *(uint64_t *)context = now;
 
     printf("dep_on_timer ms diff: %llu\n", now - previous);
-
-    *(uint64_t *)context = now;
 }
 
-void *dep_bg_exec(void *parameter)
+void *dep_bg_exec(void *context, unsigned int ctxsize)
 {
     int i;
 
@@ -38,6 +40,6 @@ void *dep_bg_exec(void *parameter)
         printf("[%d]dep_bg_exec\n", ifos_gettid());
         sleep(1);
     }
-    
+
     return NULL;
 }

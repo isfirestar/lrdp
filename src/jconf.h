@@ -8,16 +8,18 @@
 struct jconf_entry
 {
     JCONF_DECLARE_NORMAL_STRING(module);
-    JCONF_DECLARE_NORMAL_STRING(entryproc);
+    JCONF_DECLARE_NORMAL_STRING(preinitproc);
+    JCONF_DECLARE_NORMAL_STRING(postinitproc);
     JCONF_DECLARE_NORMAL_STRING(exitproc);
     JCONF_DECLARE_NORMAL_STRING(timerproc);
-    unsigned int timer_interval_millisecond;
-    unsigned int timer_context_size;
+    unsigned int ctxsize;
+    unsigned int interval;
 };
 typedef struct jconf_entry jconf_entry_t, *jconf_entry_pt;
 
 struct jconf_lwp
 {
+    JCONF_DECLARE_NORMAL_STRING(name);
     JCONF_DECLARE_NORMAL_STRING(module);
     JCONF_DECLARE_NORMAL_STRING(execproc);
     unsigned int stacksize;

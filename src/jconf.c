@@ -4,8 +4,8 @@
 #include "cjson.h"
 #include "clist.h"
 
-static struct jconf_entry jentry = { .module = { 0 }, .entryproc = { 0 },
-    .exitproc = { 0 }, .timerproc = { 0 }, .timer_interval_millisecond = 1000, .timer_context_size = 0 };
+static struct jconf_entry jentry = { .module = { 0 }, .preinitproc = { 0 }, .postinitproc = { 0 },
+    .exitproc = { 0 }, .timerproc = { 0 }, .interval = 1000, .ctxsize = 0 };
 
 struct jconf_lwp_inner
 {
@@ -35,8 +35,10 @@ static void __jconf_entry_load(cJSON *entry)
         if (cursor->type == cJSON_String) {
             if (0 == strcasecmp(cursor->string, "module")) {
                 strncpy(jentry.module, cursor->valuestring, sizeof(jentry.module) - 1);
-            } else if (0 == strcasecmp(cursor->string, "entryproc")) {
-                strncpy(jentry.entryproc, cursor->valuestring, sizeof(jentry.entryproc) - 1);
+            } else if (0 == strcasecmp(cursor->string, "preinitproc")) {
+                strncpy(jentry.preinitproc, cursor->valuestring, sizeof(jentry.preinitproc) - 1);
+            } else if (0 == strcasecmp(cursor->string, "postinitproc")) {
+                strncpy(jentry.postinitproc, cursor->valuestring, sizeof(jentry.postinitproc) - 1);
             } else if (0 == strcasecmp(cursor->string, "exitproc")) {
                 strncpy(jentry.exitproc, cursor->valuestring, sizeof(jentry.exitproc) - 1);
             } else {
@@ -54,10 +56,10 @@ static void __jconf_entry_load(cJSON *entry)
                         }
                     } else if (timer->type == cJSON_Number) {
                         if (0 == strcasecmp(timer->string, "interval")) {
-                            jentry.timer_interval_millisecond = timer->valueint;
+                            jentry.interval = timer->valueint;
                         }
-                        else if (0 == strcasecmp(timer->string, "contextsize")) {
-                            jentry.timer_context_size = timer->valueint;
+                        else if (0 == strcasecmp(timer->string, "contextsize") || 0 == strcasecmp(timer->string, "ctxsize")) {
+                            jentry.ctxsize = timer->valueint;
                         } else {
                             ;
                         }
@@ -78,7 +80,7 @@ static void __jconf_entry_load(cJSON *entry)
  *  3. "stacksize", integer, option, specify the thread stack size in byts
  *  4. "priority", integer, option, specify the nice value of the thread
  *  5. "contextsize", integer, option, specify the thread context size in bytes
- *  6. "affinity", integer, option, specify the affinity of this thread, using bit or for every CPU ids 
+ *  6. "affinity", integer, option, specify the affinity of this thread, using bit or for every CPU ids
  * we load all sub sections in parent section "lwps", create many object for "struct jconf_lwp_inner", and link them to the list "jlwps"
  * meanwhile, we shall increase the count of lwp objects "jlwps_count"
  */
@@ -114,7 +116,7 @@ static void __jconf_lwp_load(cJSON *entry)
                         lwp->body.stacksize = jconf_lwp->valueint;
                     } else if (0 == strcasecmp(jconf_lwp->string, "priority")) {
                         lwp->body.priority = jconf_lwp->valueint;
-                    } else if (0 == strcasecmp(jconf_lwp->string, "contextsize")) {
+                    } else if (0 == strcasecmp(jconf_lwp->string, "contextsize") || 0 == strcasecmp(jconf_lwp->string, "ctxsize")) {
                         lwp->body.contextsize = jconf_lwp->valueint;
                     } else if (0 == strcasecmp(jconf_lwp->string, "affinity")) {
                         lwp->body.affinity = jconf_lwp->valueint;
@@ -179,7 +181,7 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
         // travesal the json section
         cursor = root->child;
         while (cursor) {
-            if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "entry")) {
+            if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "mainloop")) {
                 __jconf_entry_load(cursor);
             } else if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "lwps")) {
                 __jconf_lwp_load(cursor);

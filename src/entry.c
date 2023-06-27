@@ -9,41 +9,33 @@
 
 static int __lrdp_entry_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
-    dep_mainloop_ontimer(clientData, dep_get_mainloop_timer_context_size());
-    return (int)dep_get_mainloop_timer_interval();
+    return mloop_exec_on_timer((mainloop_pt)clientData);
 }
 
-static int __lrdp_entry_loop(const mainloop_pt p_mainloop)
+static int __lrdp_entry_loop(const mainloop_pt mloop)
 {
     aeEventLoop *aeloop;
     long long timerid;
-    unsigned char *timerctx;
 
-    /* all ok now, create a timer for main loop */
-    timerctx = NULL;
+    /* ok, all other initialize have been finish, invoke post init proc if exist */
+    mloop_exec_postinit(mloop);
+
+    /*create a timer for main loop */
     aeloop = aeCreateEventLoop(1);
     if (aeloop) {
-        if (p_mainloop->timer_context_size > 0) {
-            timerctx = (unsigned char *)ztrycalloc(p_mainloop->timer_context_size);
-        }
-        if (timerctx) {
-            memset(timerctx, 0, p_mainloop->timer_context_size);
-        }
-        timerid = aeCreateTimeEvent(aeloop, (long long)p_mainloop->timer_interval_millisecond, &__lrdp_entry_timer, timerctx, NULL);
+        timerid = aeCreateTimeEvent(aeloop, (long long)mloop->interval, &__lrdp_entry_timer, mloop, NULL);
         if (timerid != AE_ERR) {
             /* main loop */
             aeMain(aeloop);
         }
     }
 
-    /* call exit proc */
-    dep_mainloop_atexit();
+    /* call exit proc and release resource */
+    mloop_exec_exit(mloop);
+
     /* release resource */
     if (aeloop) {
         aeDeleteEventLoop(aeloop);
-    }
-    if (timerctx) {
-        zfree(timerctx);
     }
 
     return 0;
@@ -56,7 +48,7 @@ int main(int argc, char *argv[])
     jconf_lwp_iterator_pt lwp_iterator;
     jconf_lwp_pt jlwpcfg = NULL;
     unsigned int lwp_count;
-    mainloop_pt p_mainloop;
+    mainloop_pt mloop;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
      * if count of argument less than or equal to 1, terminate the program */
@@ -73,19 +65,22 @@ int main(int argc, char *argv[])
     }
     jentry = jconf_entry_get();
 
+    /* initial critical component */
+    monotonicInit();
+
     /* load entry module */
-    p_mainloop = dep_initial_mainloop(jentry);
-    if (!p_mainloop) {
-        printf("dep_initial_mainloop failed\n");
+    mloop = mloop_initial(jentry);
+    if (!mloop) {
+        printf("mloop_initial failed\n");
         return 1;
     }
 
-    /* call entry proc, ignore if not registed, 
+    /* call entry proc, ignore if not registed,
         but we shall terminated program if user return fatal when entry function called */
-    status = dep_exec_mainloop_entry(argc - 2, argv + 2);
+    status = mloop_exec_preinit(mloop, argc - 2, argv + 2);
     if (!NSP_SUCCESS(status)) {
-        printf("dep_exec_mainloop_entry failed, status = %ld\n", status);
-        dep_mainloop_atexit();
+        printf("mloop_exec_preinit failed, status = %ld\n", status);
+        mloop_exec_exit(mloop);
         return 1;
     }
 
@@ -96,5 +91,5 @@ int main(int argc, char *argv[])
     }
 
     /* finally, execute the main loop in entry module */
-    return __lrdp_entry_loop(p_mainloop);
+    return __lrdp_entry_loop(mloop);
 }

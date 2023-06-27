@@ -1,65 +1,99 @@
 #include "mainloop.h"
 
-#include "dep.h"
-#include "ifos.h"
-#include "dict.h"
+#include "lobj.h"
+#include "zmalloc.h"
 
 #include <stdio.h>
 
-static mainloop_t g_mainloop = { 0 };
-
-mainloop_pt dep_initial_mainloop(const jconf_entry_pt jentry)
+void __mloop_on_refer(struct lobj *ptr)
 {
-    strncpy(g_mainloop.module, jentry->module, sizeof(g_mainloop.module) - 1);
-    g_mainloop.handle = dep_open_library(g_mainloop.module);
-    if (!g_mainloop.handle) {
-        printf("ifos_dlopen failed, module = %s\n", ifos_dlerror());
+    mainloop_pt loopptr;
+
+    if (!ptr) {
+        return;
+    }
+
+    loopptr = (mainloop_pt)ptr;
+    if (loopptr->context) {
+        zfree(loopptr->context);
+    }
+}
+
+void __mloop_on_free(struct lobj *lop)
+{
+    mainloop_pt loopptr;
+
+    if (!lop) {
+        return;
+    }
+
+    loopptr = lobj_body(mainloop_pt, lop);
+}
+
+mainloop_pt mloop_initial(const jconf_entry_pt jentry)
+{
+    lobj_pt lop;
+    mainloop_pt loopptr;
+
+    if (!jentry) {
         return NULL;
     }
 
+    lop = lobj_create("mainloop", jentry->module, sizeof(mainloop_t), &__mloop_on_free, &__mloop_on_refer);
+    if (!lop) {
+        return NULL;
+    }
+    loopptr = lobj_body(mainloop_pt, lop);
+
     // load all entry procedure which defined in json configure file, ignore failed
-    g_mainloop.entryproc = ifos_dlsym(g_mainloop.handle, jentry->entryproc);
-    g_mainloop.exitproc = ifos_dlsym(g_mainloop.handle, jentry->exitproc);
-    g_mainloop.timerproc = ifos_dlsym(g_mainloop.handle, jentry->timerproc);
+    loopptr->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
+    loopptr->postinitproc = lobj_dlsym(lop, jentry->postinitproc);
+    loopptr->exitproc = lobj_dlsym(lop, jentry->exitproc);
+    loopptr->timerproc = lobj_dlsym(lop, jentry->timerproc);
 
     // simple copy timer interval and context size
-    g_mainloop.timer_interval_millisecond = jentry->timer_interval_millisecond;
-    g_mainloop.timer_context_size = jentry->timer_context_size;
+    loopptr->interval = jentry->interval;
+    loopptr->ctxsize = jentry->ctxsize;
 
-    return &g_mainloop;
-}
-
-nsp_status_t dep_exec_mainloop_entry(int argc, char **argv)
-{
-    if (g_mainloop.entryproc) {
-        return g_mainloop.entryproc(argc, argv);
+    // allocate mainloop context
+    if (loopptr->ctxsize > 0) {
+        loopptr->context = (unsigned char *)ztrycalloc(loopptr->ctxsize);
     }
 
-    return NSP_STATUS_SUCCESSFUL;
+    return loopptr;
 }
 
-void dep_mainloop_atexit(void)
+nsp_status_t mloop_exec_preinit(mainloop_pt mloop,int argc, char **argv)
 {
-    if (g_mainloop.exitproc) {
-        g_mainloop.exitproc();
+    nsp_status_t status;
+
+    if (mloop->preinitproc) {
+        status = mloop->preinitproc(argc, argv);
+    } else {
+        status = NSP_STATUS_SUCCESSFUL;
     }
-    
-    dep_close_library(g_mainloop.module);
+    return status;
 }
 
-void dep_mainloop_ontimer(void *context, unsigned int ctxsize)
+void mloop_exec_postinit(mainloop_pt mloop)
 {
-    if (g_mainloop.timerproc) {
-        g_mainloop.timerproc(context, ctxsize);
+    if (mloop->postinitproc) {
+        mloop->postinitproc(mloop->context, mloop->ctxsize);
     }
 }
 
-unsigned int dep_get_mainloop_timer_interval(void)
+void mloop_exec_exit(mainloop_pt mloop)
 {
-    return g_mainloop.timer_interval_millisecond;
+    if (mloop->exitproc) {
+        mloop->exitproc();
+    }
 }
 
-unsigned int dep_get_mainloop_timer_context_size()
+int mloop_exec_on_timer(mainloop_pt mloop)
 {
-    return g_mainloop.timer_context_size;
+    if (mloop->timerproc) {
+        mloop->timerproc(mloop->context, mloop->ctxsize);
+    }
+
+    return (int)mloop->interval;
 }

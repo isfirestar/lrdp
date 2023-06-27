@@ -1,114 +1,113 @@
 #include "lwpmgr.h"
 
 #include "clist.h"
-#include "dep.h"
+#include "lobj.h"
 #include "ifos.h"
 #include "atom.h"
 
-struct lwp_item_inner
-{   
-    struct lwp_item body;
-    struct list_head ele_of_inner_lwp;
+struct lwp_item
+{
+    void *(*execproc)(void *, unsigned int);
+    lwp_t thread;
+    unsigned int stacksize;
+    unsigned int priority;
+    unsigned int ctxsize;
+    unsigned int affinity;
+    unsigned char *context;
+    struct list_head ele_local;
 };
+
 static struct list_head lwps = LIST_HEAD_INIT(lwps);
 static unsigned int lwps_count = 0;
 
+static void __ilwp_on_free(struct lobj *lop)
+{
+    struct lwp_item *lwp;
+
+    lwp = lobj_body(struct lwp_item *, lop);
+    if (!lwp) {
+        return;
+    }
+
+    if (lwp->context) {
+        zfree(lwp->context);
+    }
+
+    list_del_init(&lwp->ele_local);
+    lwps_count--;
+}
+
+static void __ilwp_on_refer(struct lobj *lop)
+{
+
+}
+
 static void *__lwp_start_rtn(void *parameter)
 {
-    struct lwp_item_inner *inner = (struct lwp_item_inner *)parameter;
+    lobj_pt lop;
+    struct lwp_item *lwp;
     void *retval;
-    unsigned char *context;
+
+    lop = lobj_refer((const char *)parameter);
+    if (!lop) {
+        return NULL;
+    }
+    lwp = lobj_body(struct lwp_item *, lop);
 
     /* save name of this thread which specify by json config */
-    lwp_setname(&inner->body.obj, inner->body.module);
+    lwp_setname(&lwp->thread, lop->name);
 
     /* adjust thread CPU affinity if needed */
-    lwp_setaffinity(&inner->body.obj, inner->body.affinity);
-
-    /* insert into manager queue */
-    list_add_tail(&inner->ele_of_inner_lwp, &lwps);
-    lwps_count++;
+    lwp_setaffinity(&lwp->thread, lwp->affinity);
 
     /* invoke module handler function */
-    if (inner->body.execproc) {
-        retval = inner->body.execproc(inner->body.context);
+    if (lwp->execproc) {
+        retval = lwp->execproc(lwp->context, lwp->ctxsize);
     } else {
         retval = NULL;
     }
 
-    /* after thread proc terminated, release resource */
-    list_del(&inner->ele_of_inner_lwp);
-    lwps_count--;
-
-    /* release body context resource */
-    context = __atomic_exchange_n(&inner->body.context, NULL, __ATOMIC_ACQ_REL);
-    if (context) {
-        zfree(context);
-    }
-
+    lobj_derefer(lop);
+    lobj_ldestroy(lop);
     lwp_exit(retval);
     return retval;
 }
 
 nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
 {
-    struct lwp_item_inner *inner;
-    struct lwp_item *lwp;
     nsp_status_t status;
-    unsigned char *context;
+    struct lwp_item *lwp;
+    lobj_pt lop;
 
     if (!jlwpcfg) {
         return posix__makeerror(EINVAL);
     }
 
-    inner = ztrymalloc(sizeof(*inner));
-    if (!inner) {
+    lop = lobj_create(jlwpcfg->name, jlwpcfg->module, sizeof(struct lwp_item), &__ilwp_on_free, &__ilwp_on_refer);
+    if (!lop) {
         return posix__makeerror(ENOMEM);
     }
-
-    lwp = &inner->body;
-    
-    strncpy(lwp->module, jlwpcfg->module, sizeof(lwp->module) - 1);
-    lwp->handle = dep_open_library(lwp->module);
-    if (!lwp->handle) {
-        zfree(inner);
-        return posix__makeerror(EINVAL);
-    }
+    lwp = lobj_body(struct lwp_item *, lop);
 
     do {
-        lwp->execproc = ifos_dlsym(lwp->handle, jlwpcfg->execproc);
-        if (!lwp->execproc) {
-            status = posix__makeerror(EINVAL);
-            break;
-        }
-
-        /* determine the thread user data size in bytes */
-        lwp->contextsize = jlwpcfg->contextsize;
-        lwp->context = (unsigned char *)ztrymalloc(lwp->contextsize);
-        if (!lwp->context) {
-            status = posix__makeerror(ENOMEM);
-            break;
-        }
-
+        lwp->execproc = lobj_dlsym(lop, jlwpcfg->execproc);
         lwp->stacksize = jlwpcfg->stacksize;
         lwp->priority = jlwpcfg->priority;
         lwp->affinity = jlwpcfg->affinity;
-
-        /* create thread */
-        status = lwp_create(&lwp->obj, jlwpcfg->priority, &__lwp_start_rtn, inner);
-    } while (0);
-    
-    if (!NSP_SUCCESS(status)) {
-        context = __atomic_exchange_n(&inner->body.context, NULL, __ATOMIC_ACQ_REL);
-        if (context) {
-            zfree(context);
+        /* determine the thread user data size in bytes */
+        lwp->ctxsize = jlwpcfg->contextsize;
+        if (lwp->ctxsize > 0) {
+            lwp->context = (unsigned char *)ztrycalloc(lwp->ctxsize);  // ignore memory allocation error, we can pass a null pointer to thread entry function
         }
+        /* link to local list */
+        list_add_tail(&lwp->ele_local, &lwps);
+        lwps_count++;
+        /* create thread */
+        status = lwp_create(&lwp->thread, lwp->priority, &__lwp_start_rtn, lop->name);
+    } while (0);
 
-        // do NOT close module on failed
-        // if (lwp->module) {
-        //     dep_close_module(lwp->module);
-        // }
-        zfree(inner);
+    if (!NSP_SUCCESS(status)) {
+        lobj_ldestroy(lop);
     }
     return status;
 }
