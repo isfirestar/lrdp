@@ -9,8 +9,8 @@
 
 struct lwp_item
 {
-    void *module;
-    char name[64];
+    void *handle;
+    char module[64];
     void *(*execproc)(void *);
     lwp_t obj;
     unsigned int stacksize;

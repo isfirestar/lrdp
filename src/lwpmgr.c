@@ -1,8 +1,9 @@
 #include "lwpmgr.h"
 
 #include "clist.h"
-#include "deps.h"
+#include "dep.h"
 #include "ifos.h"
+#include "atom.h"
 
 struct lwp_item_inner
 {   
@@ -16,17 +17,19 @@ static void *__lwp_start_rtn(void *parameter)
 {
     struct lwp_item_inner *inner = (struct lwp_item_inner *)parameter;
     void *retval;
+    unsigned char *context;
 
-    lwp_setname(&inner->body.obj, inner->body.name);
+    /* save name of this thread which specify by json config */
+    lwp_setname(&inner->body.obj, inner->body.module);
+
+    /* adjust thread CPU affinity if needed */
     lwp_setaffinity(&inner->body.obj, inner->body.affinity);
 
     /* insert into manager queue */
     list_add_tail(&inner->ele_of_inner_lwp, &lwps);
     lwps_count++;
 
-    /* insert into dep manager */
-    dep_set_handle(inner->body.name, inner->body.module);
-
+    /* invoke module handler function */
     if (inner->body.execproc) {
         retval = inner->body.execproc(inner->body.context);
     } else {
@@ -36,9 +39,11 @@ static void *__lwp_start_rtn(void *parameter)
     /* after thread proc terminated, release resource */
     list_del(&inner->ele_of_inner_lwp);
     lwps_count--;
-    dep_set_handle(inner->body.name, NULL);
-    if (inner->body.context) {
-        zfree(inner->body.context);
+
+    /* release body context resource */
+    context = __atomic_exchange_n(&inner->body.context, NULL, __ATOMIC_ACQ_REL);
+    if (context) {
+        zfree(context);
     }
 
     lwp_exit(retval);
@@ -50,6 +55,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     struct lwp_item_inner *inner;
     struct lwp_item *lwp;
     nsp_status_t status;
+    unsigned char *context;
 
     if (!jlwpcfg) {
         return posix__makeerror(EINVAL);
@@ -62,17 +68,15 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
 
     lwp = &inner->body;
     
-    lwp->module = dep_get_handle(jlwpcfg->module);
-    if (!lwp->module) {
-        lwp->module = ifos_dlopen(jlwpcfg->module);
-        if (!lwp->module) {
-            zfree(inner);
-            return posix__makeerror(EINVAL);
-        }
+    strncpy(lwp->module, jlwpcfg->module, sizeof(lwp->module) - 1);
+    lwp->handle = dep_open_library(lwp->module);
+    if (!lwp->handle) {
+        zfree(inner);
+        return posix__makeerror(EINVAL);
     }
 
     do {
-        lwp->execproc = ifos_dlsym(lwp->module, jlwpcfg->execproc);
+        lwp->execproc = ifos_dlsym(lwp->handle, jlwpcfg->execproc);
         if (!lwp->execproc) {
             status = posix__makeerror(EINVAL);
             break;
@@ -86,22 +90,24 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
             break;
         }
 
-        strncpy(lwp->name, jlwpcfg->name, sizeof(lwp->name) - 1);
         lwp->stacksize = jlwpcfg->stacksize;
         lwp->priority = jlwpcfg->priority;
         lwp->affinity = jlwpcfg->affinity;
 
         /* create thread */
-        status = lwp_create(&lwp->obj, jlwpcfg->priority, __lwp_start_rtn, inner);
+        status = lwp_create(&lwp->obj, jlwpcfg->priority, &__lwp_start_rtn, inner);
     } while (0);
     
     if (!NSP_SUCCESS(status)) {
-        if (lwp->context) {
-            zfree(lwp->context);
+        context = __atomic_exchange_n(&inner->body.context, NULL, __ATOMIC_ACQ_REL);
+        if (context) {
+            zfree(context);
         }
-        if (lwp->module) {
-            ifos_dlclose(lwp->module);
-        }
+
+        // do NOT close module on failed
+        // if (lwp->module) {
+        //     dep_close_module(lwp->module);
+        // }
         zfree(inner);
     }
     return status;

@@ -1,6 +1,6 @@
 #include "jconf.h"
 #include "ifos.h"
-#include "deps.h"
+#include "mainloop.h"
 #include "ae.h"
 #include "zmalloc.h"
 #include "lwpmgr.h"
@@ -9,11 +9,11 @@
 
 static int __lrdp_entry_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
-    dep_exec_timer(clientData, dep_get_entry_context_size());
-    return (int)dep_get_entry_timer_interval();
+    dep_mainloop_ontimer(clientData, dep_get_mainloop_timer_context_size());
+    return (int)dep_get_mainloop_timer_interval();
 }
 
-static int __lrdp_entry_loop(const dep_entry_pt depentry)
+static int __lrdp_entry_loop(const mainloop_pt p_mainloop)
 {
     aeEventLoop *aeloop;
     long long timerid;
@@ -23,13 +23,13 @@ static int __lrdp_entry_loop(const dep_entry_pt depentry)
     timerctx = NULL;
     aeloop = aeCreateEventLoop(1);
     if (aeloop) {
-        if (depentry->timer_context_size > 0) {
-            timerctx = (unsigned char *)ztrycalloc(depentry->timer_context_size);
+        if (p_mainloop->timer_context_size > 0) {
+            timerctx = (unsigned char *)ztrycalloc(p_mainloop->timer_context_size);
         }
         if (timerctx) {
-            memset(timerctx, 0, depentry->timer_context_size);
+            memset(timerctx, 0, p_mainloop->timer_context_size);
         }
-        timerid = aeCreateTimeEvent(aeloop, (long long)depentry->timer_interval_millisecond, &__lrdp_entry_timer, timerctx, NULL);
+        timerid = aeCreateTimeEvent(aeloop, (long long)p_mainloop->timer_interval_millisecond, &__lrdp_entry_timer, timerctx, NULL);
         if (timerid != AE_ERR) {
             /* main loop */
             aeMain(aeloop);
@@ -37,7 +37,7 @@ static int __lrdp_entry_loop(const dep_entry_pt depentry)
     }
 
     /* call exit proc */
-    dep_exec_exit();
+    dep_mainloop_atexit();
     /* release resource */
     if (aeloop) {
         aeDeleteEventLoop(aeloop);
@@ -56,7 +56,7 @@ int main(int argc, char *argv[])
     jconf_lwp_iterator_pt lwp_iterator;
     jconf_lwp_pt jlwpcfg = NULL;
     unsigned int lwp_count;
-    dep_entry_pt depentry;
+    mainloop_pt p_mainloop;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
      * if count of argument less than or equal to 1, terminate the program */
@@ -74,18 +74,18 @@ int main(int argc, char *argv[])
     jentry = jconf_entry_get();
 
     /* load entry module */
-    depentry = dep_initial_entry(jentry);
-    if (!depentry) {
-        printf("dep_initial_entry failed\n");
+    p_mainloop = dep_initial_mainloop(jentry);
+    if (!p_mainloop) {
+        printf("dep_initial_mainloop failed\n");
         return 1;
     }
 
-    /* call entry proc, MUST success
-        this call MUST early than any other process */
-    status = dep_exec_entry(argc - 2, argv + 2);
+    /* call entry proc, ignore if not registed, 
+        but we shall terminated program if user return fatal when entry function called */
+    status = dep_exec_mainloop_entry(argc - 2, argv + 2);
     if (!NSP_SUCCESS(status)) {
-        printf("dep_exec_entry failed, status = %ld\n", status);
-        dep_exec_exit();
+        printf("dep_exec_mainloop_entry failed, status = %ld\n", status);
+        dep_mainloop_atexit();
         return 1;
     }
 
@@ -96,5 +96,5 @@ int main(int argc, char *argv[])
     }
 
     /* finally, execute the main loop in entry module */
-    return __lrdp_entry_loop(depentry);
+    return __lrdp_entry_loop(p_mainloop);
 }

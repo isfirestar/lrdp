@@ -32,6 +32,12 @@ void dep_on_timer(void *context, unsigned int ctxsize)
 
 void *dep_bg_exec(void *parameter)
 {
-    printf("dep_bg_exec, this thread id is:%d, parameter address:%p\n", ifos_gettid(), parameter);
+    int i;
+
+    for (i = 0; i < 1000; i++) {
+        printf("[%d]dep_bg_exec\n", ifos_gettid());
+        sleep(1);
+    }
+    
     return NULL;
 }

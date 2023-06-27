@@ -19,7 +19,6 @@ typedef struct jconf_entry jconf_entry_t, *jconf_entry_pt;
 struct jconf_lwp
 {
     JCONF_DECLARE_NORMAL_STRING(module);
-    JCONF_DECLARE_NORMAL_STRING(name);
     JCONF_DECLARE_NORMAL_STRING(execproc);
     unsigned int stacksize;
     unsigned int priority;
