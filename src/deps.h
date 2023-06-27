@@ -19,3 +19,9 @@ extern void dep_exec_exit(void);
 extern void dep_exec_timer(void *context, unsigned int ctxsize);
 extern unsigned int dep_get_entry_timer_interval(void);
 extern unsigned int dep_get_entry_context_size();
+
+/* management， all these implement are NOT multi-thread safe */
+extern void *dep_get_handle(const char *name);
+extern void dep_set_handle(const char *name, void *handle);
+extern void *dep_remove_handle(const char *name);
+extern void dep_clear_all(void);

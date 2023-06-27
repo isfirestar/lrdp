@@ -2,6 +2,8 @@
 #include <time.h>
 #include <stdint.h>
 
+#include "ifos.h"
+
 int dep_entry(int argc, char **argv)
 {
     printf("dep_entry\n");
@@ -26,4 +28,10 @@ void dep_on_timer(void *context, unsigned int ctxsize)
     printf("dep_on_timer ms diff: %llu\n", now - previous);
 
     *(uint64_t *)context = now;
+}
+
+void *dep_bg_exec(void *parameter)
+{
+    printf("dep_bg_exec, this thread id is:%d, parameter address:%p\n", ifos_gettid(), parameter);
+    return NULL;
 }

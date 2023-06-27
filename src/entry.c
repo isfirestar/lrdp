@@ -3,23 +3,60 @@
 #include "deps.h"
 #include "ae.h"
 #include "zmalloc.h"
+#include "lwpmgr.h"
 
 #include <stdio.h>
 
-static int dep_entry_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
+static int __lrdp_entry_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
     dep_exec_timer(clientData, dep_get_entry_context_size());
     return (int)dep_get_entry_timer_interval();
+}
+
+static int __lrdp_entry_loop(const dep_entry_pt depentry)
+{
+    aeEventLoop *aeloop;
+    long long timerid;
+    unsigned char *timerctx;
+
+    /* all ok now, create a timer for main loop */
+    timerctx = NULL;
+    aeloop = aeCreateEventLoop(1);
+    if (aeloop) {
+        if (depentry->timer_context_size > 0) {
+            timerctx = (unsigned char *)ztrycalloc(depentry->timer_context_size);
+        }
+        if (timerctx) {
+            memset(timerctx, 0, depentry->timer_context_size);
+        }
+        timerid = aeCreateTimeEvent(aeloop, (long long)depentry->timer_interval_millisecond, &__lrdp_entry_timer, timerctx, NULL);
+        if (timerid != AE_ERR) {
+            /* main loop */
+            aeMain(aeloop);
+        }
+    }
+
+    /* call exit proc */
+    dep_exec_exit();
+    /* release resource */
+    if (aeloop) {
+        aeDeleteEventLoop(aeloop);
+    }
+    if (timerctx) {
+        zfree(timerctx);
+    }
+
+    return 0;
 }
 
 int main(int argc, char *argv[])
 {
     nsp_status_t status;
     jconf_entry_pt jentry;
+    jconf_lwp_iterator_pt lwp_iterator;
+    jconf_lwp_pt jlwpcfg = NULL;
+    unsigned int lwp_count;
     dep_entry_pt depentry;
-    aeEventLoop *aeloop;
-    long long timerid;
-    unsigned char *timerctx;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
      * if count of argument less than or equal to 1, terminate the program */
@@ -43,7 +80,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* call entry proc, MUST success */
+    /* call entry proc, MUST success
+        this call MUST early than any other process */
     status = dep_exec_entry(argc - 2, argv + 2);
     if (!NSP_SUCCESS(status)) {
         printf("dep_exec_entry failed, status = %ld\n", status);
@@ -51,32 +89,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    /* all ok now, create a timer for main loop */
-    timerctx = NULL;
-    aeloop = aeCreateEventLoop(1);
-    if (aeloop) {
-        if (depentry->timer_context_size > 0) {
-            timerctx = (unsigned char *)ztrymalloc(depentry->timer_context_size);
-        }
-        if (timerctx) {
-            memset(timerctx, 0, depentry->timer_context_size);
-        }
-        timerid = aeCreateTimeEvent(aeloop, (long long)dep_get_entry_timer_interval(), &dep_entry_timer, timerctx, NULL);
-        if (timerid != AE_ERR) {
-            /* main loop */
-            aeMain(aeloop);
-        }
+    /* load and create multi-thread component */
+    lwp_iterator = jconf_lwp_get_iterator(&lwp_count);
+    while (NULL != (lwp_iterator = jconf_lwp_get(lwp_iterator, &jlwpcfg))) {
+        lwp_spawn(jlwpcfg);
     }
 
-    /* call exit proc */
-    dep_exec_exit();
-    /* release resource */
-    if (aeloop) {
-        aeDeleteEventLoop(aeloop);
-    }
-    if (timerctx) {
-        zfree(timerctx);
-    }
-
-    return 0;
+    /* finally, execute the main loop in entry module */
+    return __lrdp_entry_loop(depentry);
 }

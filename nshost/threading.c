@@ -164,7 +164,7 @@ nsp_status_t lwp_getaffinity(const lwp_t *lwp, int *cpumask)
     return NSP_STATUS_SUCCESSFUL;
 }
 
-nsp_status_t lwp_setname(const lwp_t *lwp, const abuff_pthread_name_t *name)
+nsp_status_t lwp_setname(const lwp_t *lwp, const char *name)
 {
     int fr;
 
@@ -177,7 +177,7 @@ nsp_status_t lwp_setname(const lwp_t *lwp, const abuff_pthread_name_t *name)
     }
 
     /* prctl(PR_SET_NAME) */
-    fr = pthread_setname_np(lwp->pid, name->cst);
+    fr = pthread_setname_np(lwp->pid, name);
     if (0 == fr) {
         return NSP_STATUS_SUCCESSFUL;
     }

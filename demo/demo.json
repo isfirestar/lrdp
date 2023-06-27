@@ -1,12 +1,23 @@
 {
     "entry" : {
-        "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+        "module" : "libdemo.so",
         "entryproc" : "dep_entry",
         "exitproc" : "dep_atexit",
         "entrytimer" : {
             "interval" : 1000,
             "timerproc" : "dep_on_timer",
             "contextsize" : 128
+        }
+    },
+
+    "lwps" : {
+        "demobg" : {
+            "module" : "libdemo.so",
+            "execproc" : "dep_bg_exec",
+            "stacksize" : 1024,
+            "priority" : 0,
+            "contextsize" : 128,
+            "affinity" : 0
         }
     }
 }
