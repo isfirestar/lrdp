@@ -520,7 +520,7 @@ PORTABLEIMPL(void) md5_update(md5ctx_pt md5ctx, const uint8_t *input, uint32_t i
     _md5_memcpy((uint8_t*) & md5ctx->buffer[index], (uint8_t*) & input[i], inputLen - i);
 }
 
-PORTABLEIMPL(void) md5_final(md5ctx_pt md5ctx, abuff_md5_result_t *digest)
+PORTABLEIMPL(void) md5_final(md5ctx_pt md5ctx, struct md5_digest *digest)
 {
     uint8_t bits[8];
     uint32_t index, padLen;
@@ -536,7 +536,7 @@ PORTABLEIMPL(void) md5_final(md5ctx_pt md5ctx, abuff_md5_result_t *digest)
     md5_update(md5ctx, md5ctx->PADDING, padLen);
 
     md5_update(md5ctx, bits, 8);
-    _md5_encode(digest->ust, md5ctx->state, sizeof(digest->ust));
+    _md5_encode(digest->buf, md5ctx->state, sizeof(digest->buf));
 
     _md5_memset((uint8_t*) md5ctx, 0, sizeof ( *md5ctx));
     md5_init(md5ctx);
@@ -895,7 +895,7 @@ static void __des_decryptBlock(const DES_ElemType cipherBlock[8], DES_ElemType s
 
 #define DEFAULT_DES_KEY     ("3uB#*tTy")
 
-PORTABLEIMPL(int) des_encrypt(const char* input, size_t cb, const abuff_des_key_t *key, char* output)
+PORTABLEIMPL(int) des_encrypt(const char* input, size_t cb, const struct des_key *key, char* output)
 {
     DES_ElemType keyBlock[8], bKey[64];
     DES_ElemType subKeys[16][48];
@@ -906,7 +906,7 @@ PORTABLEIMPL(int) des_encrypt(const char* input, size_t cb, const abuff_des_key_
         return posix__makeerror(EINVAL);
     }
 
-    memcpy(keyBlock, (NULL == key) ? DEFAULT_DES_KEY : key->cst, sizeof(key->cst));
+    memcpy(keyBlock, (NULL == key) ? DEFAULT_DES_KEY : key->buf, sizeof(key->buf));
 
     /* 将密钥转换为二进制流 */
     Char8ToBit64(keyBlock, bKey);
@@ -924,7 +924,7 @@ PORTABLEIMPL(int) des_encrypt(const char* input, size_t cb, const abuff_des_key_
     return (int)( cb - length);
 }
 
-PORTABLEIMPL(int) des_decrypt(const char* input, size_t cb, const abuff_des_key_t *key, char* output)
+PORTABLEIMPL(int) des_decrypt(const char* input, size_t cb, const struct des_key *key, char* output)
 {
     DES_ElemType keyBlock[8], bKey[64];
     DES_ElemType subKeys[16][48];
@@ -935,7 +935,7 @@ PORTABLEIMPL(int) des_decrypt(const char* input, size_t cb, const abuff_des_key_
         return posix__makeerror(EINVAL);
     }
 
-    memcpy(keyBlock, (NULL == key) ? DEFAULT_DES_KEY : key->cst, sizeof(key->cst));
+    memcpy(keyBlock, (NULL == key) ? DEFAULT_DES_KEY : key->buf, sizeof(key->buf));
 
     /* 将密钥转换为二进制流 */
     Char8ToBit64(keyBlock, bKey);
@@ -974,7 +974,7 @@ static const int SHA256_KEY[64] = {
     0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
 };
 
-PORTABLEIMPL(unsigned char *) sha256(const unsigned char* str, int orilen, abuff_sha256_result_t *out)
+PORTABLEIMPL(unsigned char *) sha256(const unsigned char* str, int orilen, struct sha256_result *out)
 {
     char *cursor, *end, *oriptr;
     int actlen, i, W[64], T1, T2;
@@ -1044,9 +1044,9 @@ PORTABLEIMPL(unsigned char *) sha256(const unsigned char* str, int orilen, abuff
 
     zfree(oriptr);
 
-    ir  = (int *)out->ust;
+    ir  = (int *)out->buf;
     for (i = 0; i < 8; i++) {
         ir[i] = naos_chord32(hash[i]);
     }
-    return out->ust;
+    return out->buf;
 }

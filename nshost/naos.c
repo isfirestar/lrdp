@@ -2,7 +2,6 @@
 
 #include <ctype.h>
 
-#include "abuff.h"
 #include "zmalloc.h"
 
 PORTABLEIMPL(nsp_status_t) naos_ipv4tos(uint32_t inet,  char *inetstr, unsigned int maxlen)
@@ -54,7 +53,7 @@ PORTABLEIMPL(uint32_t) naos_ipv4tou(const char *inetstr, enum byte_order_t metho
     strcpy(tmpstr, inetstr);
 
     nextToken = NULL;
-    while (NULL != (p = crt_strtok(nextToken ? NULL : tmpstr, ".", &nextToken)) && i < 4) {
+    while (NULL != (p = strtok_r(nextToken ? NULL : tmpstr, ".", &nextToken)) && i < 4) {
         byteValue = strtoul(p, NULL, 10);
         digital |= byteValue << (kByteOrder_LittleEndian == method ? BIT_MOV_FOR_LITTLE_ENDIAN : BIT_MOV_FOR_BIG_ENDIAN)[i];
         ++i;

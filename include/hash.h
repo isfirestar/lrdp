@@ -7,8 +7,6 @@
 #define HASH_H
 
 #include "compiler.h"
-#include "abuff.h"
-
 /*--------------------------------------------VFN1/VFN1a--------------------------------------------*/
 PORTABLEAPI(uint32_t) vfn1_h32( const unsigned char *key, int length );
 PORTABLEAPI(uint64_t) vfn1_h64( const unsigned char *key, int length );
@@ -45,10 +43,12 @@ PORTABLEAPI(int) DEPRECATED("use base64 functions without \"2\" instead it") bas
 
 /* MD5 calc */
 typedef struct __md5ctx *md5ctx_pt;
-typedef abuff_type(16)  abuff_md5_result_t;
+struct md5_digest {
+    unsigned char buf[16];
+};
 PORTABLEAPI(void) md5_init(md5ctx_pt md5ctx);
 PORTABLEAPI(void) md5_update(md5ctx_pt md5ctx, const uint8_t *input, uint32_t inputLen);
-PORTABLEAPI(void) md5_final(md5ctx_pt md5ctx, abuff_md5_result_t *digest);
+PORTABLEAPI(void) md5_final(md5ctx_pt md5ctx, struct md5_digest *digest);
 
 /*
 des_encrypt 过程， 使用DES对内存加密
@@ -63,17 +63,21 @@ des_encrypt 过程， 使用DES对内存加密
  * @key 可以为NULL, 如果@key为NULL, 则使用默认密钥
  * @cb 必须8字节对齐
  */
-typedef abuff_type(8) abuff_des_key_t;
-PORTABLEAPI(int) des_encrypt(const char* input,size_t cb,const abuff_des_key_t *key, char* output);
-PORTABLEAPI(int) des_decrypt(const char* input,size_t cb,const abuff_des_key_t *key, char* output);
+struct des_key {
+    char buf[8];
+};
+PORTABLEAPI(int) des_encrypt(const char* input,size_t cb,const struct des_key *key, char* output);
+PORTABLEAPI(int) des_decrypt(const char* input,size_t cb,const struct des_key *key, char* output);
 
 /**
  sha256 过程对 @orilen 长度的 @input 数据进行sha256加密， 加密结果通过 @out反馈给调用线程
  操作成功返回值等于 @out 的指针， 否则为NULL
  http://www.ttmd5.com/hash.php?type=9 这里可以在线验证
  **/
-typedef abuff_type(32)  abuff_sha256_result_t;
-PORTABLEAPI(unsigned char*) sha256(const unsigned char* input, int orilen, abuff_sha256_result_t *out);
+struct sha256_result {
+    unsigned char buf[32];
+};
+PORTABLEAPI(unsigned char*) sha256(const unsigned char* input, int orilen, struct sha256_result *out);
 
 
 /* The default hashing function uses SipHash implementation

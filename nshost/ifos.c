@@ -1,6 +1,5 @@
 ﻿#include "compiler.h"
 
-#include "abuff.h"
 #include "ifos.h"
 #include "clist.h"
 #include "zmalloc.h"
@@ -45,11 +44,11 @@ static nsp_status_t _ifos_rmdir(const char *dir)
 
     status = NSP_STATUS_SUCCESSFUL;
     while (NULL != (ent = readdir(dirp))) {
-        if (0 == crt_strcmp(ent->d_name, ".") || 0 == crt_strcmp(ent->d_name, "..")) {
+        if (0 == strcmp(ent->d_name, ".") || 0 == strcmp(ent->d_name, "..")) {
             continue;
         }
 
-        crt_sprintf(filename, sizeof_array(filename), "%s/%s", dir, ent->d_name);
+        snprintf(filename, sizeof(filename) - 1, "%s/%s", dir, ent->d_name);
 
         if (ifos_isdir(filename)) {
             status = _ifos_rmdir(filename);
@@ -111,19 +110,19 @@ const char *ifos_dlerror()
     return dlerror();
 }
 
-const char *ifos_dlerror2(abuff_128_t *estr)
+const char *ifos_dlerror2(char *holder, int size)
 {
     const char *p;
 
-    if (unlikely(!estr)) {
+    if (unlikely(!holder)) {
         return NULL;
     }
 
     /* dlerror() returns NULL if no errors have occurred since initialization or since it was last called. */
     p = dlerror();
     if (p) {
-        abuff_strcpy(estr, p);
-        return estr->st;
+        strncpy(holder, p, size - 1);
+        return holder;
     }
 
     return NULL;
@@ -202,79 +201,79 @@ nsp_status_t ifos_rm(const char *const target)
     }
 }
 
-nsp_status_t ifos_fullpath_current(ifos_path_buffer_t *holder)
+nsp_status_t ifos_fullpath_current(char *holder, int size)
 {
     ssize_t n;
 
-    n = readlink("/proc/self/exe", holder->st, abuff_size(holder));
+    n = readlink("/proc/self/exe", holder, size - 1);
     if (n < 0) {
         return posix__makeerror(errno);
     }
 
-    holder->st[n] = 0;
+    holder[n] = 0;
     return NSP_STATUS_SUCCESSFUL;
 }
 
-nsp_status_t ifos_getpedir(ifos_path_buffer_t *holder)
+nsp_status_t ifos_getpedir(char *holder, int size)
 {
     char *p;
     nsp_status_t status;
-    ifos_path_buffer_t dir;
+    char dir[MAXPATH];
 
     if ( unlikely((!holder)) ) {
         return posix__makeerror(EINVAL);
     }
 
-    status = ifos_fullpath_current(&dir);
+    status = ifos_fullpath_current(dir, sizeof(dir));
     if ( unlikely(!NSP_SUCCESS(status)) ) {
         return status;
     }
 
-    p = strrchr(dir.st, '/');
+    p = strrchr(dir, '/');
     if (!p) {
         return posix__makeerror(ENOTDIR);
     }
 
     *p = 0;
-    abuff_strcpy(holder, dir.st);
+    strncpy(holder, dir, size - 1);
     return NSP_STATUS_SUCCESSFUL;
 }
 
-nsp_status_t ifos_getpename(ifos_path_buffer_t *holder)
+nsp_status_t ifos_getpename(char *holder, int size)
 {
     char *p;
     nsp_status_t status;
-    ifos_path_buffer_t dir;
+    char dir[MAXPATH];
 
     if ( unlikely((!holder)) ) {
         return posix__makeerror(EINVAL);
     }
 
-    status = ifos_fullpath_current(&dir);
+    status = ifos_fullpath_current(dir, sizeof(dir));
     if ( unlikely(!NSP_SUCCESS(status)) ) {
         return status;
     }
 
-    p = strrchr(dir.st, '/');
+    p = strrchr(dir, '/');
     if (!p) {
         return posix__makeerror(ENOTDIR);
     }
 
-    abuff_strcpy(holder, p + 1);
+    strncpy(holder, p + 1, size - 1);
     return NSP_STATUS_SUCCESSFUL;
 }
 
-nsp_status_t ifos_getelfname(ifos_path_buffer_t *holder) {
-    return ifos_getpename(holder);
+nsp_status_t ifos_getelfname(char *holder, int size) {
+    return ifos_getpename(holder, size);
 }
 
-nsp_status_t ifos_gettmpdir(ifos_path_buffer_t *holder)
+nsp_status_t ifos_gettmpdir(char *holder, int size)
 {
     if ( unlikely((!holder)) ) {
         return posix__makeerror(EINVAL);
     }
 
-    abuff_strcpy(holder, "/tmp");
+    strncpy(holder, "/tmp", size - 1);
     return NSP_STATUS_SUCCESSFUL;
 }
 

@@ -7,7 +7,6 @@
  */
 
 #include "compiler.h"
-#include "abuff.h"
 
 
 /* Switching IPv4 representation method between Dotted-Decimal-Notation and integer

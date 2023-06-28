@@ -2,9 +2,6 @@
 #define POSIX_IFOS_H
 
 #include "compiler.h"
-#include "abuff.h"       /* abuff */
-
-typedef abuff_type(255)   ifos_path_buffer_t;
 
 #if _WIN32
 	#include <Windows.h>
@@ -54,7 +51,7 @@ PORTABLEAPI(void *) ifos_dlopen2(const char *file, int flags);
 PORTABLEAPI(void *) ifos_dlsym(void* handle, const char* symbol);
 PORTABLEAPI(void) ifos_dlclose(void *handle);
 PORTABLEAPI(const char * ) DEPRECATED("retrun pointer unsafe") ifos_dlerror();
-PORTABLEAPI(const char * ) ifos_dlerror2(abuff_128_t *estr);
+PORTABLEAPI(const char * ) ifos_dlerror2(char *holder, int size);
 
 /* ifos-dir */
 PORTABLEAPI(nsp_status_t) ifos_mkdir(const char *const dir);
@@ -64,11 +61,11 @@ PORTABLEAPI(nsp_status_t) ifos_rm(const char *const target); /* if @target is a 
 PORTABLEAPI(nsp_boolean_t) ifos_isdir(const char *const file);
 
 /* ifos-path */
-PORTABLEAPI(nsp_status_t) ifos_fullpath_current(ifos_path_buffer_t *holder); /* obtain the fully path of current execute file(ELF/PE) */
-PORTABLEAPI(nsp_status_t) ifos_getpedir(ifos_path_buffer_t *holder);  /* obtain the directory contain current execute file(ELF/PE) */
-PORTABLEAPI(nsp_status_t) ifos_getpename(ifos_path_buffer_t *holder);
-PORTABLEAPI(nsp_status_t) ifos_getelfname(ifos_path_buffer_t *holder);
-PORTABLEAPI(nsp_status_t) ifos_gettmpdir(ifos_path_buffer_t *holder);
+PORTABLEAPI(nsp_status_t) ifos_fullpath_current(char *holder, int size); /* obtain the fully path of current execute file(ELF/PE) */
+PORTABLEAPI(nsp_status_t) ifos_getpedir(char *holder, int size);  /* obtain the directory contain current execute file(ELF/PE) */
+PORTABLEAPI(nsp_status_t) ifos_getpename(char *holder, int size);
+PORTABLEAPI(nsp_status_t) ifos_getelfname(char *holder, int size);
+PORTABLEAPI(nsp_status_t) ifos_gettmpdir(char *holder, int size);
 
 /*ifos-ps*/
 /* obtain or adjust the priority of process

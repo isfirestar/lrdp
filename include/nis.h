@@ -34,10 +34,10 @@ PORTABLEAPI(void) tcp_uninit();
 	parameters:
 	@callback input the callback function address to respond the TCP network event, see "common network events" in @nisdef.h
 			    framework didn't support any other opportunity to change the callback function address.
-				particularly, when you create a TCP client by invoke @tcp_create or @tcp_create2, this parameter can be option to NULL, 
+				particularly, when you create a TCP client by invoke @tcp_create or @tcp_create2, this parameter can be option to NULL,
 					in this case, you shall explicit call tcp_read to read data from remote peer manually.
 					in this case, you shall NOT call @tcp_connect2 any time.
-					
+
 	@ipstr specify the local IPv4 address format with "dotted decimal notation" specify the initial address which this link expect to bind on.
 			if "NULL" specified, framework will use default address "0.0.0.0" assicoated with any network-adpater
 	@port specify the port which this link expect to bind on, if 0 specified, framework will use "random-selection" by underlying-system
@@ -138,12 +138,12 @@ PORTABLEAPI(nsp_status_t) tcp_write(HTCPLINK link, const void *origin, int size,
  *  3. when read request explicit invoke by caller, the callback function which specified by @tcp_create or @tcp_create2 will NOT be trigger.
  *  4. never call this function in callback function which specified by @tcp_create or @tcp_create2, it will cause dead-lock.
  *  5. but, in many case of madatory synchronous request-response situation, this function is very useful.
- * 
+ *
  * parameters:
  * @link is the TCP object symbol which have TCP_ESTABLISHED state.
  * @data is the user data buffer which acquire to receive data from target host.
  * @size indicate the length in bytes which @data buffer can contain
- * 
+ *
  * return:
  * on success, the return value should be either a positive integer indicate the received size of direct-completed inner syscall
  * on fatal, negative integer will return, potential errors including:
@@ -278,14 +278,14 @@ PORTABLEAPI(nsp_status_t) udp_write(HUDPLINK link, const void *origin, unsigned 
  *  2. when read request explicit invoke by caller, the callback function which specified by @udp_create or @udp_create2 will NOT be trigger.
  *  3. never call this function in callback function which specified by @udp_create or @udp_create2, it will cause dead-lock.
  *  4. but, in many case of madatory synchronous request-response situation, this function is very useful.
- * 
+ *
  * parameters:
  * @link is the UDP object symbol
  * @data is the user data buffer which acquire to receive data from target host.
  * @size indicate the length in bytes which @data buffer can contain
  * @radr is the remote target host IPv4 address, if this parameter is NULL means calling thread ignore incoming address information
  * @rport is the remote target host UDP port, if this parameter is NULL means calling thread ignore incoming port information
- * 
+ *
  * return:
  * on success, the return value should be either a positive integer indicate the received size of direct-completed inner syscall
  * on fatal, negative integer will return, potential errors including:
@@ -345,7 +345,7 @@ PORTABLEAPI(int) udp_write_grp(HUDPLINK link, packet_grp_t *grp);
 PORTABLEAPI(nsp_status_t) nis_getver(swnet_version_t *version);
 /* parse the domain name, get the first parse result of obtained, convert it to Little-Endian*/
 PORTABLEAPI(nsp_status_t) nis_gethost(const char *name, uint32_t *ipv4);
-PORTABLEAPI(nsp_status_t) nis_lgethost(abuff_64_t *name);
+PORTABLEAPI(nsp_status_t) nis_lgethost(char *name, size_t size);
 /* set/change ECR(event callback routine) for nshost use, return the previous ecr address. */
 PORTABLEAPI(nis_event_callback_fp) nis_checr(const nis_event_callback_fp ecr);
 
@@ -387,7 +387,7 @@ PORTABLEAPI(int) nis_getifmisc(ifmisc_t *ifv, int *cbifv);
  *	input paramter @phyaddr is a buffer larger than 6 bytes use to save the mac address when interface success invoked.
  *	on success, the return value should be zero, otherwise, negative integer number return, it's absolute value indicate the error number definied in <errno.h>
 */
-PORTABLEAPI(nsp_status_t) nis_getifmac(const char *eth_name, abuff_mac_t *phyaddr);
+PORTABLEAPI(nsp_status_t) nis_getifmac(const char *eth_name, char *phyaddr, int size);
 
 /*
  *	NI_SETATTR(int)

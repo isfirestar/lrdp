@@ -185,11 +185,11 @@ nsp_status_t lwp_setname(const lwp_t *lwp, const char *name)
     return posix__makeerror(fr);
 }
 
-nsp_status_t lwp_getname(const lwp_t *lwp, abuff_pthread_name_t *name)
+nsp_status_t lwp_getname(const lwp_t *lwp, char *holder, int size)
 {
     int fr;
 
-    if (!lwp || !name) {
+    if (!lwp || !holder) {
         return posix__makeerror(EINVAL);
     }
 
@@ -198,7 +198,7 @@ nsp_status_t lwp_getname(const lwp_t *lwp, abuff_pthread_name_t *name)
     }
 
     /* prctl(PR_GET_NAME) */
-    fr = pthread_getname_np(lwp->pid, name->st, sizeof(name->st));
+    fr = pthread_getname_np(lwp->pid, holder, size);
     if (0 == fr) {
         return NSP_STATUS_SUCCESSFUL;
     }

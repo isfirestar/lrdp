@@ -49,11 +49,11 @@ nsp_status_t nis_getver(swnet_version_t *version)
     return NSP_STATUS_SUCCESSFUL;
 }
 #endif
-nsp_status_t nis_lgethost(abuff_64_t *name)
+nsp_status_t nis_lgethost(char *name, size_t size)
 {
     ILLEGAL_PARAMETER_CHECK(!name);
 
-    if (0 == gethostname(name->st, sizeof(*name))) {
+    if (0 == gethostname(name, size)) {
         return NSP_STATUS_SUCCESSFUL;
     }
 
@@ -275,7 +275,7 @@ int nis_cntl(objhld_t link, int cmd, ...)
     return retval;
 }
 
-nsp_status_t nis_getifmac(const char *eth_name, abuff_mac_t *phyaddr)
+nsp_status_t nis_getifmac(const char *eth_name, char *phyaddr, int size)
 {
     struct ifreq ifr;
     int fd;
@@ -291,7 +291,7 @@ nsp_status_t nis_getifmac(const char *eth_name, abuff_mac_t *phyaddr)
                    sa_family_t sa_family;
                    char        sa_data[14];
                 } */
-            memcpy(phyaddr, ifr.ifr_hwaddr.sa_data, sizeof(*phyaddr));
+            memcpy(phyaddr, ifr.ifr_hwaddr.sa_data, min(size, sizeof(ifr.ifr_hwaddr.sa_data)));
         }
         close(fd);
     }

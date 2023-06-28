@@ -2,7 +2,6 @@
 #define MULTITHREADING_H
 
 #include "compiler.h"
-#include "abuff.h"
 #include "zmalloc.h"
 
 #if _WIN32
@@ -97,9 +96,8 @@ PORTABLEAPI(nsp_status_t) lwp_getaffinity(const lwp_t *lwp, int *cpumask);
 /* thread name */
 /* The  thread name is a meaningful C language string, whose length is restricted to 16 characters, including the terminating null byte ('\0').  */
 /* function shall be failed with -EINVAL if thread entity which indicated by @lwp has been terminated before invocation */
-typedef abuff_type(16)  abuff_pthread_name_t;
 PORTABLEAPI(nsp_status_t) lwp_setname(const lwp_t *lwp, const char *name);
-PORTABLEAPI(nsp_status_t) lwp_getname(const lwp_t *lwp, abuff_pthread_name_t *name);
+PORTABLEAPI(nsp_status_t) lwp_getname(const lwp_t *lwp, char *holder, int size);
 
 #if _WIN32
 #define lwp_exit(code)

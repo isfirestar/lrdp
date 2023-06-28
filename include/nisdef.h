@@ -3,7 +3,6 @@
 
 #include "compiler.h"
 #include "object.h"
-#include "abuff.h"
 
 /* data-link layer restriction */
 #define ETHER_LAYER_SIZE  (14)
@@ -28,9 +27,9 @@ typedef HLNK HUDPLINK;
 typedef HLNK HARPLINK;
 
 /* common string type */
-typedef abuff_type(6)   abuff_mac_t;        /* binary buffer to hold a MAC address */
-typedef abuff_type(16)  abuff_ddn_ipv4_t;   /* DDN is a abbreviation of "Dotted Decimal Notation" - one way to representation a IPv4 address  */
-typedef abuff_type(112) abuff_ipc_path_t;   /* a string with maximum length to hold a legal IPC file path including prefix */
+// typedef abuff_type(6)   abuff_mac_t;        /* binary buffer to hold a MAC address */
+// typedef abuff_type(16)  abuff_ddn_ipv4_t;   /* DDN is a abbreviation of "Dotted Decimal Notation" - one way to representation a IPv4 address  */
+// typedef abuff_type(112) abuff_ipc_path_t;   /* a string with maximum length to hold a legal IPC file path including prefix */
 
 #if !defined INVALID_HTCPLINK
     #define INVALID_HTCPLINK ((HTCPLINK)(~0))
