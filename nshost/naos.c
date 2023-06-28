@@ -5,7 +5,7 @@
 #include "abuff.h"
 #include "zmalloc.h"
 
-PORTABLEIMPL(nsp_status_t) naos_ipv4tos(uint32_t inet, abuff_naos_inet_t *inetstr)
+PORTABLEIMPL(nsp_status_t) naos_ipv4tos(uint32_t inet,  char *inetstr, unsigned int maxlen)
 {
     unsigned char inetby[4];
     int i;
@@ -19,7 +19,7 @@ PORTABLEIMPL(nsp_status_t) naos_ipv4tos(uint32_t inet, abuff_naos_inet_t *inetst
 		inet >>= 8;
     }
 
-	abuff_sprintf(inetstr, "%hhu.%hhu.%hhu.%hhu", inetby[3], inetby[2], inetby[1], inetby[0]);
+	snprintf(inetstr, maxlen, "%hhu.%hhu.%hhu.%hhu", inetby[3], inetby[2], inetby[1], inetby[0]);
 	return NSP_STATUS_SUCCESSFUL;
 }
 

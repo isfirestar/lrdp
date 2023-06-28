@@ -3,7 +3,9 @@
 #include "mainloop.h"
 #include "ae.h"
 #include "zmalloc.h"
-#include "lwpmgr.h"
+#include "lwpobj.h"
+#include "netobj.h"
+#include "rand.h"
 
 #include <stdio.h>
 
@@ -45,9 +47,12 @@ int main(int argc, char *argv[])
 {
     nsp_status_t status;
     jconf_entry_pt jentry;
-    jconf_lwp_iterator_pt lwp_iterator;
+    jconf_iterator_pt lwp_iterator;
+    jconf_iterator_pt net_iterator;
     jconf_lwp_pt jlwpcfg = NULL;
+    jconf_net_pt jnetcfg = NULL;
     unsigned int lwp_count;
+    unsigned int net_count;
     mainloop_pt mloop;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
@@ -68,6 +73,12 @@ int main(int argc, char *argv[])
     /* initial critical component */
     monotonicInit();
 
+    /* initial random seed */
+    redisSrand48((int32_t)time(NULL));
+
+    /* initial object management */
+    lobj_init();
+    
     /* load entry module */
     mloop = mloop_initial(jentry);
     if (!mloop) {
@@ -90,6 +101,11 @@ int main(int argc, char *argv[])
         lwp_spawn(jlwpcfg);
     }
 
+    /* load and create networking component */
+    net_iterator = jconf_net_get_iterator(&net_count);
+    while (NULL != (net_iterator = jconf_net_get(net_iterator, &jnetcfg))) {
+        netobj_create(jnetcfg);
+    }
     /* finally, execute the main loop in entry module */
     return __lrdp_entry_loop(mloop);
 }

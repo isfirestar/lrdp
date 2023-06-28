@@ -10,12 +10,19 @@
 
 #define LOBJ_MAX_NAME_LEN 64
 
-#include <stddef.h>
-#include <ctype.h>
+#include "compiler.h"
 
 struct lobj;
 typedef void (*freeproc_pfn)(struct lobj *lop);
 typedef void (*refer_pfn)(struct lobj *lop);
+typedef int (*write_pfn)(struct lobj *lop, const void *data, size_t n);
+
+struct lobj_fx
+{
+    freeproc_pfn freeproc;
+    refer_pfn referproc;
+    write_pfn writeproc;
+};
 
 enum lobj_status
 {
@@ -26,23 +33,28 @@ enum lobj_status
 
 struct lobj
 {
+    int64_t seq;               // seq id of object
     char name[LOBJ_MAX_NAME_LEN];   // name of object
     char module[256];               // host share library name of object
     void *handle;                   // host share library handle of object
-    size_t size;                    // size of object, exclude lobj_t
     int refcount;                   // reference count of object
     enum lobj_status status;        // status of object
-    freeproc_pfn freeproc;          // callback proc before object free
-    refer_pfn    referproc;         // callback proc when object refer
+    struct lobj_fx fx;              // function table of object
+    size_t size;                    // size of object body, exclude lobj_t
     unsigned char body[0];
 };
 typedef struct lobj lobj_t, *lobj_pt;
 
 #define lobj_body(type, lop) ((type)((lop)->body))
+#define lobj_head(body) ((lobj_pt)(((unsigned char *)(body)) - offsetof(lobj_t, body)))
 
-extern lobj_pt lobj_create(const char *name, const char *module, size_t size, freeproc_pfn freeproc, refer_pfn referproc);
+extern nsp_status_t lobj_init();
+extern lobj_pt lobj_create(const char *name, const char *module, size_t size, const struct lobj_fx *fx);
 extern void lobj_destroy(const char *name);
+extern void lobj_destroy_byseq(int64_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
 extern lobj_pt lobj_refer(const char *name);
+extern lobj_pt lobj_refer_byseq(int64_t seq);
 extern void lobj_derefer(lobj_pt lop);
+extern int lobj_write(lobj_pt lop, const void *data, size_t n);

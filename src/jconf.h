@@ -4,6 +4,10 @@
 
 #define JCONF_NORMAL_NAMELEN                    64
 #define JCONF_DECLARE_NORMAL_STRING(text)       char text[JCONF_NORMAL_NAMELEN]
+#define JCONF_DECLARE_STRING(text, lenght)      char text[lenght]
+
+typedef struct jconf_iterator *jconf_iterator_pt;
+extern void jconf_release_iterator(jconf_iterator_pt iterator);
 
 struct jconf_entry
 {
@@ -17,6 +21,9 @@ struct jconf_entry
 };
 typedef struct jconf_entry jconf_entry_t, *jconf_entry_pt;
 
+extern nsp_status_t jconf_initial_load(const char *jsonfile);
+extern jconf_entry_pt jconf_entry_get(void);
+
 struct jconf_lwp
 {
     JCONF_DECLARE_NORMAL_STRING(name);
@@ -28,11 +35,27 @@ struct jconf_lwp
     unsigned int affinity;
 };
 typedef struct jconf_lwp jconf_lwp_t, *jconf_lwp_pt;
-typedef struct jconf_lwp_iterator *jconf_lwp_iterator_pt;
 
-extern nsp_status_t jconf_initial_load(const char *jsonfile);
-extern jconf_entry_pt jconf_entry_get(void);
+extern jconf_iterator_pt jconf_lwp_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *lwp);
 
-extern jconf_lwp_iterator_pt jconf_lwp_get_iterator(unsigned int *count);
-extern void jconf_release_iterator(jconf_lwp_iterator_pt iterator);
-extern jconf_lwp_iterator_pt jconf_lwp_get(jconf_lwp_iterator_pt iterator, jconf_lwp_pt *lwp);
+#define JCFG_PROTO_ERR  (0)
+#define JCFG_PROTO_TCP  (6)
+#define JCFG_PROTO_UDP  (17)
+struct jconf_net
+{
+    JCONF_DECLARE_NORMAL_STRING(name);
+    JCONF_DECLARE_NORMAL_STRING(module);
+    JCONF_DECLARE_STRING(listen, 24);
+    JCONF_DECLARE_STRING(remote, 24);
+    JCONF_DECLARE_STRING(local, 24);
+    JCONF_DECLARE_NORMAL_STRING(acceptproc);
+    JCONF_DECLARE_NORMAL_STRING(recvproc);
+    JCONF_DECLARE_NORMAL_STRING(closeproc);
+    JCONF_DECLARE_NORMAL_STRING(connectproc);
+    unsigned int protocol;
+};
+typedef struct jconf_net jconf_net_t, *jconf_net_pt;
+
+extern jconf_iterator_pt jconf_net_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *net);

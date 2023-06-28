@@ -162,13 +162,13 @@ typedef int nsp_boolean_t;
 } while (0)
 
 #define ILLEGAL_PARAMETER_CHECK(expr)   do {    \
-    if (unlikely(!(expr))) {    \
+    if (unlikely((expr))) {    \
         return -EINVAL;    \
     }   \
 } while (0)
 
 #define ILLEGAL_PARAMETER_STOP(expr)   do {    \
-    if (unlikely(!(expr))) {    \
+    if (unlikely((expr))) {    \
         return;    \
     }   \
 } while (0)

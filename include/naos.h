@@ -9,12 +9,11 @@
 #include "compiler.h"
 #include "abuff.h"
 
-typedef abuff_type(16) abuff_naos_inet_t;
 
 /* Switching IPv4 representation method between Dotted-Decimal-Notation and integer
  */
 PORTABLEAPI(uint32_t) naos_ipv4tou(const char *inetstr, enum byte_order_t byte_order);
-PORTABLEAPI(nsp_status_t) naos_ipv4tos(uint32_t inet, abuff_naos_inet_t *inetstr);
+PORTABLEAPI(nsp_status_t) naos_ipv4tos(uint32_t inet, char *inetstr, unsigned int maxlen);
 
 /* the same as htonl(3)/ntohl(3)/ntohs(3)/htons(3)
  */

@@ -1,6 +1,6 @@
 {
     "mainloop" : {
-        "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+        "module" : "libdemo.so",
         "preinitproc" : "dep_pre_init",
         "postinitproc" : "dep_post_init",
         "exitproc" : "dep_atexit",
@@ -13,7 +13,7 @@
 
     "lwps" : {
         "demobg" : {
-            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "module" : "libdemo.so",
             "execproc" : "dep_bg_exec",
             "stacksize" : 1024,
             "priority" : 0,
@@ -22,18 +22,24 @@
         }
     },
 
-    "networking" : {
+    "nets" : {
         "testsrv" : {
-            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
-            "listen" : "tcp://0.0.0.0:10254",
-            "acceptproc" : "dep_tcp_test_accept",
-            "receiveproc" : "dep_tcp_test_receive"
+            "protocol" : "tcp",
+            "module" : "libdemo.so",
+            "listen" : "0.0.0.0:10256",
+            "acceptproc" : "dep_tcp_on_accept",
+            "recvproc" : "dep_tcp_on_received",
+            "closeproc" : "dep_tcp_on_closed"
         },
 
         "testcli" : {
-            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
-            "local" : "udp://0.0.0.010251",
-            "receiveproc" : "dep_udp_test_receive"
+            "protocol" : "tcp",
+            "module" : "libdemo.so",
+            "local" : "0.0.0.0:10255",
+            "remote" : "127.0.0.1:10256",
+            "connectproc" : "dep_tcp_on_connected",
+            "recvproc" : "dep_tcp_on_received",
+            "closeproc" : "dep_tcp_on_closed"
         }
     }
 }

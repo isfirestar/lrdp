@@ -34,12 +34,16 @@ mainloop_pt mloop_initial(const jconf_entry_pt jentry)
 {
     lobj_pt lop;
     mainloop_pt loopptr;
+    struct lobj_fx fx;
 
     if (!jentry) {
         return NULL;
     }
 
-    lop = lobj_create("mainloop", jentry->module, sizeof(mainloop_t), &__mloop_on_free, &__mloop_on_refer);
+    fx.freeproc = &__mloop_on_free;
+    fx.referproc = &__mloop_on_refer;
+    fx.writeproc = NULL;
+    lop = lobj_create("mainloop", jentry->module, sizeof(mainloop_t), &fx);
     if (!lop) {
         return NULL;
     }

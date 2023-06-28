@@ -1,9 +1,8 @@
-#include "lwpmgr.h"
+#include "lwpobj.h"
 
 #include "clist.h"
 #include "lobj.h"
-#include "ifos.h"
-#include "atom.h"
+#include "threading.h"
 
 struct lwp_item
 {
@@ -78,12 +77,16 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     nsp_status_t status;
     struct lwp_item *lwp;
     lobj_pt lop;
+    struct lobj_fx fx;
 
     if (!jlwpcfg) {
         return posix__makeerror(EINVAL);
     }
 
-    lop = lobj_create(jlwpcfg->name, jlwpcfg->module, sizeof(struct lwp_item), &__ilwp_on_free, &__ilwp_on_refer);
+    fx.freeproc = &__ilwp_on_free;
+    fx.referproc = &__ilwp_on_refer;
+    fx.writeproc = NULL;
+    lop = lobj_create(jlwpcfg->name, jlwpcfg->module, sizeof(struct lwp_item), &fx);
     if (!lop) {
         return posix__makeerror(ENOMEM);
     }
