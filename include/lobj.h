@@ -60,3 +60,6 @@ extern lobj_pt lobj_refer(const char *name);
 extern lobj_pt lobj_refer_byseq(int64_t seq);
 extern void lobj_derefer(lobj_pt lop);
 extern int lobj_write(lobj_pt lop, const void *data, size_t n);
+
+/* object helper function impls */
+extern char *lobj_random_name(char *holder, size_t size);

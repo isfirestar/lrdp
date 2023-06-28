@@ -2,8 +2,6 @@
 
 #include "nis.h"
 #include "naos.h"
-#include "monotonic.h"
-#include "rand.h"
 #include "zmalloc.h"
 
 #include <string.h>
@@ -69,8 +67,7 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
     lobj_pt slop, clop;
     int64_t *sseq;
     struct netobj *snetp, *cnetp;
-    char cname[LOBJ_MAX_NAME_LEN];
-    monotime now;
+    char holder[LOBJ_MAX_NAME_LEN], *cname;
 
     nis_cntl(slink, NI_GETCTX, &sseq);
     if (!sseq) {
@@ -87,8 +84,7 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
         return;
     }
 
-    now = getMonotonicUs();
-    snprintf(cname, sizeof(cname) - 1, "%u|%u|%u", (unsigned int)(now >> 32), (unsigned int)(now & 0xffffffff), redisLrand48());
+    cname = lobj_random_name(holder, sizeof(holder) - 1);
     clop = lobj_create(cname, slop->module, slop->size, slop->ctxsize, &slop->fx);
     if (clop) {
         cnetp = lobj_body(struct netobj *, clop);

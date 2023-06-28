@@ -2,8 +2,9 @@
 
 #include "dict.h"
 #include "zmalloc.h"
-
+#include "monotonic.h"
 #include "ifos.h"
+#include "rand.h"
 
 static dict *g_dict_hash_byname = NULL;
 static dict *g_dict_hash_byseq = NULL;
@@ -100,9 +101,9 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
     lop->status = LOS_NORMAL;
     (NULL != fx) ? memcpy(&lop->fx, fx, sizeof(lop->fx)) : memset(&lop->fx, 0, sizeof(lop->fx));
     lop->ctx = NULL;
-    lop->ctxsize = ctxsize;
-    if (ctxsize > 0) {
-        lop->ctx = (unsigned char *)ztrycalloc(ctxsize);
+    lop->ctxsize = (ctxsize + sizeof(long) - 1) & ~(sizeof(long) - 1); /* ctxsize MUST align to the upper sizeof(long) */
+    if (lop->ctxsize > 0) {
+        lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
     }
 
     if (DICT_OK != dictAdd(g_dict_hash_byname, lop->name, lop)) {
@@ -242,4 +243,14 @@ int lobj_write(lobj_pt lop, const void *data, size_t n)
     }
 
     return lop->fx.writeproc(lop, data, n);
+}
+
+/* helper function impls */
+char *lobj_random_name(char *holder, size_t size)
+{
+    monotime now;
+    
+    now = getMonotonicUs();
+    snprintf(holder, size, "%u|%u|%u", (unsigned int)(now >> 32), (unsigned int)(now & 0xffffffff), redisLrand48());
+    return holder;
 }
