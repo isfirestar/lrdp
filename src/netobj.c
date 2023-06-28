@@ -89,7 +89,7 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
 
     now = getMonotonicUs();
     snprintf(cname, sizeof(cname) - 1, "%u|%u|%u", (unsigned int)(now >> 32), (unsigned int)(now & 0xffffffff), redisLrand48());
-    clop = lobj_create(cname, slop->module, slop->size, &slop->fx);
+    clop = lobj_create(cname, slop->module, slop->size, slop->ctxsize, &slop->fx);
     if (clop) {
         cnetp = lobj_body(struct netobj *, clop);
         cnetp->link = clink;
@@ -259,7 +259,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
     }
 
     // create object first
-    lop = lobj_create(jnetcfg->name, jnetcfg->module, sizeof(struct netobj), &fx);
+    lop = lobj_create(jnetcfg->name, jnetcfg->module, sizeof(struct netobj), jnetcfg->contextsize, &fx);
     if (!lop) {
         return;
     }

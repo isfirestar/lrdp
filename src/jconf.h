@@ -54,6 +54,7 @@ struct jconf_net
     JCONF_DECLARE_NORMAL_STRING(closeproc);
     JCONF_DECLARE_NORMAL_STRING(connectproc);
     unsigned int protocol;
+    unsigned int contextsize;
 };
 typedef struct jconf_net jconf_net_t, *jconf_net_pt;
 

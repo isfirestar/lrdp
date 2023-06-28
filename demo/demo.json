@@ -29,7 +29,8 @@
             "listen" : "0.0.0.0:10256",
             "acceptproc" : "dep_tcp_on_accept",
             "recvproc" : "dep_tcp_on_received",
-            "closeproc" : "dep_tcp_on_closed"
+            "closeproc" : "dep_tcp_on_closed",
+            "contextsize" : 16
         },
 
         "testcli" : {

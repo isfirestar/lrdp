@@ -2,102 +2,112 @@
 
 #include "lobj.h"
 #include "zmalloc.h"
+#include "ae.h"
 
 #include <stdio.h>
 
-void __mloop_on_refer(struct lobj *ptr)
+struct mainloop
 {
-    mainloop_pt loopptr;
+    void (*preinitproc)(int argc, char **argv);
+    void (*postinitproc)(void *context, unsigned int ctxsize);
+    void (*exitproc)(void);
+    void (*timerproc)(void *context, unsigned int ctxsize);
+    unsigned int interval;
+};
+typedef struct mainloop mainloop_t, *mainloop_pt;;
 
-    if (!ptr) {
-        return;
-    }
-
-    loopptr = (mainloop_pt)ptr;
-    if (loopptr->context) {
-        zfree(loopptr->context);
-    }
-}
-
-void __mloop_on_free(struct lobj *lop)
-{
-    mainloop_pt loopptr;
-
-    if (!lop) {
-        return;
-    }
-
-    loopptr = lobj_body(mainloop_pt, lop);
-}
-
-mainloop_pt mloop_initial(const jconf_entry_pt jentry)
+lobj_pt mloop_create(const jconf_entry_pt jentry)
 {
     lobj_pt lop;
-    mainloop_pt loopptr;
-    struct lobj_fx fx;
+    mainloop_pt mloop;
+    struct lobj_fx fx = {
+        .freeproc = NULL,
+        .referproc = NULL,
+        .writeproc = NULL
+    };
 
     if (!jentry) {
         return NULL;
     }
 
-    fx.freeproc = &__mloop_on_free;
-    fx.referproc = &__mloop_on_refer;
-    fx.writeproc = NULL;
-    lop = lobj_create("mainloop", jentry->module, sizeof(mainloop_t), &fx);
+    lop = lobj_create("mainloop", jentry->module, sizeof(mainloop_t), jentry->ctxsize, &fx);
     if (!lop) {
         return NULL;
     }
-    loopptr = lobj_body(mainloop_pt, lop);
+    mloop = lobj_body(mainloop_pt, lop);
 
     // load all entry procedure which defined in json configure file, ignore failed
-    loopptr->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
-    loopptr->postinitproc = lobj_dlsym(lop, jentry->postinitproc);
-    loopptr->exitproc = lobj_dlsym(lop, jentry->exitproc);
-    loopptr->timerproc = lobj_dlsym(lop, jentry->timerproc);
+    mloop->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
+    mloop->postinitproc = lobj_dlsym(lop, jentry->postinitproc);
+    mloop->exitproc = lobj_dlsym(lop, jentry->exitproc);
+    mloop->timerproc = lobj_dlsym(lop, jentry->timerproc);
 
     // simple copy timer interval and context size
-    loopptr->interval = jentry->interval;
-    loopptr->ctxsize = jentry->ctxsize;
+    mloop->interval = jentry->interval;
 
-    // allocate mainloop context
-    if (loopptr->ctxsize > 0) {
-        loopptr->context = (unsigned char *)ztrycalloc(loopptr->ctxsize);
-    }
-
-    return loopptr;
+    return lop;
 }
 
-nsp_status_t mloop_exec_preinit(mainloop_pt mloop,int argc, char **argv)
+static int __mloop_on_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
 {
-    nsp_status_t status;
+    mainloop_pt mloop;
+    lobj_pt lop;
+
+    lop = (lobj_pt)clientData;
+    mloop = lobj_body(mainloop_pt, lop);
+
+    if (mloop->timerproc) {
+        mloop->timerproc(lop->ctx, lop->ctxsize);
+    }
+
+    return mloop->interval;
+}
+
+int mloop_run(lobj_pt lop)
+{
+    aeEventLoop *aeloop;
+    long long timerid;
+    mainloop_pt mloop;
+
+    if (!lop) {
+        return 1;
+    }
+    mloop = lobj_body(mainloop_pt, lop);
+
+    /* ok, all other initialize have been finish, invoke post init proc if exist */
+    if (mloop->postinitproc) {
+        mloop->postinitproc(lop->ctx, lop->ctxsize);
+    }
+
+    /*create a timer for main loop */
+    aeloop = aeCreateEventLoop(1);
+    if (aeloop) {
+        timerid = aeCreateTimeEvent(aeloop, (long long)mloop->interval, &__mloop_on_timer, lop, NULL);
+        if (timerid != AE_ERR) {
+            /* main loop */
+            aeMain(aeloop);
+        }
+    }
+
+    /* release resource */
+    if (aeloop) {
+        aeDeleteEventLoop(aeloop);
+    }
+
+    lobj_ldestroy(lop);
+    return 0;
+}
+
+void mloop_preinit(lobj_pt lop,int argc, char **argv)
+{
+    mainloop_pt mloop;
+
+    if (!lop) {
+        return;
+    }
+    mloop = lobj_body(mainloop_pt, lop);
 
     if (mloop->preinitproc) {
-        status = mloop->preinitproc(argc, argv);
-    } else {
-        status = NSP_STATUS_SUCCESSFUL;
-    }
-    return status;
-}
-
-void mloop_exec_postinit(mainloop_pt mloop)
-{
-    if (mloop->postinitproc) {
-        mloop->postinitproc(mloop->context, mloop->ctxsize);
-    }
-}
-
-void mloop_exec_exit(mainloop_pt mloop)
-{
-    if (mloop->exitproc) {
-        mloop->exitproc();
-    }
-}
-
-int mloop_exec_on_timer(mainloop_pt mloop)
-{
-    if (mloop->timerproc) {
-        mloop->timerproc(mloop->context, mloop->ctxsize);
-    }
-
-    return (int)mloop->interval;
+        mloop->preinitproc(argc, argv);
+    } 
 }

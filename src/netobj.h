@@ -2,9 +2,7 @@
 
 #include "jconf.h"
 #include "lobj.h"
-#include "avltree.h"
-#include "clist.h"
-#include "nis.h"
+#include "nisdef.h"
 
 struct endpoint
 {

@@ -76,7 +76,7 @@ nsp_status_t lobj_init()
     return NSP_STATUS_SUCCESSFUL;
 }
 
-lobj_pt lobj_create(const char *name, const char *module, size_t size, const struct lobj_fx *fx)
+lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx)
 {
     lobj_pt lop;
 
@@ -99,6 +99,11 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, const str
     lop->refcount = 0;
     lop->status = LOS_NORMAL;
     (NULL != fx) ? memcpy(&lop->fx, fx, sizeof(lop->fx)) : memset(&lop->fx, 0, sizeof(lop->fx));
+    lop->ctx = NULL;
+    lop->ctxsize = ctxsize;
+    if (ctxsize > 0) {
+        lop->ctx = (unsigned char *)ztrycalloc(ctxsize);
+    }
 
     if (DICT_OK != dictAdd(g_dict_hash_byname, lop->name, lop)) {
         zfree(lop);
@@ -118,6 +123,10 @@ static void __lobj_release(lobj_pt lop)
 {
     if (lop->fx.freeproc) {
         lop->fx.freeproc(lop);
+    }
+
+    if (lop->ctx) {
+        zfree(lop->ctx);
     }
 
     dictDelete(g_dict_hash_byname, lop->name);

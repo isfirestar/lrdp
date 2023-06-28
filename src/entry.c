@@ -1,47 +1,8 @@
-#include "jconf.h"
-#include "ifos.h"
 #include "mainloop.h"
-#include "ae.h"
-#include "zmalloc.h"
 #include "lwpobj.h"
 #include "netobj.h"
 #include "rand.h"
-
-#include <stdio.h>
-
-static int __lrdp_entry_timer(struct aeEventLoop *eventLoop, long long id, void *clientData)
-{
-    return mloop_exec_on_timer((mainloop_pt)clientData);
-}
-
-static int __lrdp_entry_loop(const mainloop_pt mloop)
-{
-    aeEventLoop *aeloop;
-    long long timerid;
-
-    /* ok, all other initialize have been finish, invoke post init proc if exist */
-    mloop_exec_postinit(mloop);
-
-    /*create a timer for main loop */
-    aeloop = aeCreateEventLoop(1);
-    if (aeloop) {
-        timerid = aeCreateTimeEvent(aeloop, (long long)mloop->interval, &__lrdp_entry_timer, mloop, NULL);
-        if (timerid != AE_ERR) {
-            /* main loop */
-            aeMain(aeloop);
-        }
-    }
-
-    /* call exit proc and release resource */
-    mloop_exec_exit(mloop);
-
-    /* release resource */
-    if (aeloop) {
-        aeDeleteEventLoop(aeloop);
-    }
-
-    return 0;
-}
+#include "monotonic.h"
 
 int main(int argc, char *argv[])
 {
@@ -53,7 +14,7 @@ int main(int argc, char *argv[])
     jconf_net_pt jnetcfg = NULL;
     unsigned int lwp_count;
     unsigned int net_count;
-    mainloop_pt mloop;
+    lobj_pt mloop;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
      * if count of argument less than or equal to 1, terminate the program */
@@ -80,20 +41,14 @@ int main(int argc, char *argv[])
     lobj_init();
     
     /* load entry module */
-    mloop = mloop_initial(jentry);
+    mloop = mloop_create(jentry);
     if (!mloop) {
         printf("mloop_initial failed\n");
         return 1;
     }
 
-    /* call entry proc, ignore if not registed,
-        but we shall terminated program if user return fatal when entry function called */
-    status = mloop_exec_preinit(mloop, argc - 2, argv + 2);
-    if (!NSP_SUCCESS(status)) {
-        printf("mloop_exec_preinit failed, status = %ld\n", status);
-        mloop_exec_exit(mloop);
-        return 1;
-    }
+    /* pre-init applicate */
+    mloop_preinit(mloop, argc - 2, argv + 2);
 
     /* load and create multi-thread component */
     lwp_iterator = jconf_lwp_get_iterator(&lwp_count);
@@ -107,5 +62,5 @@ int main(int argc, char *argv[])
         netobj_create(jnetcfg);
     }
     /* finally, execute the main loop in entry module */
-    return __lrdp_entry_loop(mloop);
+    return mloop_run(mloop);
 }

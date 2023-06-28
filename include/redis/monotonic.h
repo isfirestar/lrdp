@@ -23,6 +23,8 @@ typedef uint64_t monotime;
 /* Retrieve counter of micro-seconds relative to an arbitrary point in time.  */
 extern monotime (*getMonotonicUs)(void);
 
+#define getMonotonicMs() ((!getMonotonicUs) ? 0 : (getMonotonicUs() / 1000))
+
 
 /* Call once at startup to initialize the monotonic clock.  Though this only
  * needs to be called once, it may be called additional times without impact.

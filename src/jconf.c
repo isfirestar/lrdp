@@ -72,11 +72,11 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
     int64_t filesize;
     char *jsondata;
     int nread;
-    cJSON *root, *cursor;
+    cJSON *jroot, *jcursor;
 
     fd = -1;
     jsondata = NULL;
-    root = NULL;
+    jroot = NULL;
 
     status = ifos_file_open(jsonfile, FF_RDACCESS | FF_OPEN_EXISTING, 0644, &fd);
     if (!NSP_SUCCESS(status)) {
@@ -103,25 +103,25 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
         }
 
         // parse the json data
-        root = cJSON_Parse(jsondata);
-        if (!root) {
+        jroot = cJSON_Parse(jsondata);
+        if (!jroot) {
             status = posix__makeerror(EINVAL);
             break;
         }
 
         // travesal the json section
-        cursor = root->child;
-        while (cursor) {
-            if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "mainloop")) {
-                __jconf_entry_load(cursor);
-            } else if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "lwps")) {
-                __jconf_lwp_load(cursor);
-            } else if (cursor->type == cJSON_Object && 0 == strcasecmp(cursor->string, "nets")) {
-                __jconf_net_load(cursor);
+        jcursor = jroot->child;
+        while (jcursor) {
+            if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "mainloop")) {
+                __jconf_entry_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "lwps")) {
+                __jconf_lwp_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "nets")) {
+                __jconf_net_load(jcursor);
             } else {
                 ;
             }
-            cursor = cursor->next;
+            jcursor = jcursor->next;
         }
 
     } while (0);
@@ -135,8 +135,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
         zfree(jsondata);
     }
 
-    if (root) {
-        cJSON_Delete(root);
+    if (jroot) {
+        cJSON_Delete(jroot);
     }
 
     return status;
@@ -294,20 +294,20 @@ static unsigned int jnets_count = 0;
  */
 static void __jconf_net_load(cJSON *entry)
 {
-    cJSON *cursor, *jnet;
+    cJSON *jcursor, *jnet;
     struct jconf_net_inner *net;
 
-    cursor = entry->child;
+    jcursor = entry->child;
 
-    while (cursor) {
-        if (cursor->type == cJSON_Object) {
+    while (jcursor) {
+        if (jcursor->type == cJSON_Object) {
             net = ztrycalloc(sizeof(*net));
             if (!net) {
                 break;
             }
-            strncpy(net->body.name, cursor->string, sizeof(net->body.name) - 1);
+            strncpy(net->body.name, jcursor->string, sizeof(net->body.name) - 1);
 
-            jnet = cursor->child;
+            jnet = jcursor->child;
             while (jnet) {
                 if (jnet->type == cJSON_String) {
                     if (0 == strcasecmp(jnet->string, "module")) {
@@ -337,6 +337,14 @@ static void __jconf_net_load(cJSON *entry)
                     } else {
                         ;
                     }
+                } else if (jnet->type == cJSON_Number) {
+                    if (0 == strcasecmp(jcursor->string, "contextsize") || 0 == strcasecmp(jcursor->string, "ctxsize")) {
+                        net->body.contextsize = jnet->valueint;
+                    } else {
+                        ;
+                    }
+                } else {
+                    ;
                 }
                 jnet = jnet->next;
             }
@@ -344,7 +352,7 @@ static void __jconf_net_load(cJSON *entry)
             list_add_tail(&net->ele_of_inner_net, &jnets);
             jnets_count++;
         }
-        cursor = cursor->next;
+        jcursor = jcursor->next;
     }
 }
 

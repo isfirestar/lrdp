@@ -40,6 +40,8 @@ struct lobj
     int refcount;                   // reference count of object
     enum lobj_status status;        // status of object
     struct lobj_fx fx;              // function table of object
+    size_t ctxsize;                 // size of object context
+    unsigned char *ctx;             // context of object
     size_t size;                    // size of object body, exclude lobj_t
     unsigned char body[0];
 };
@@ -49,7 +51,7 @@ typedef struct lobj lobj_t, *lobj_pt;
 #define lobj_head(body) ((lobj_pt)(((unsigned char *)(body)) - offsetof(lobj_t, body)))
 
 extern nsp_status_t lobj_init();
-extern lobj_pt lobj_create(const char *name, const char *module, size_t size, const struct lobj_fx *fx);
+extern lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx);
 extern void lobj_destroy(const char *name);
 extern void lobj_destroy_byseq(int64_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
