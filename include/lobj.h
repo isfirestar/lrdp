@@ -29,7 +29,7 @@ struct lobj_fx
 };
 
 extern nsp_status_t lobj_init();
-extern lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx);
+extern lobj_pt lobj_create(const char *name, const char *module, size_t bodysize, size_t ctxsize, const struct lobj_fx *fx);
 extern lobj_pt lobj_dup(const char *name, const lobj_pt olop);
 extern void lobj_destroy(const char *name);
 extern void lobj_destroy_byseq(lobj_seq_t seq);
