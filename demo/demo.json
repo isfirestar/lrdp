@@ -54,7 +54,6 @@
             "parity" : "none",
             "flowcontrol" : "none",
             "recvproc" : "dep_ser_on_received",
-            "closeproc" : "dep_ser_on_closed",
             "contextsize" : 0
         }
     }

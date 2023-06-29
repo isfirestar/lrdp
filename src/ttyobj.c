@@ -101,7 +101,13 @@ static void __ttyobj_on_free(struct lobj *lop)
 
 static int __ttyobj_write(struct lobj *lop, const void *data, size_t n)
 {
-    struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
+    struct ttyobj *ttyp;
+
+    if (!lop || !data || !n) {
+        return -1;
+    }
+    
+    ttyp = lobj_body(struct ttyobj *, lop);
 
     return (ttyp->fd > 0) ? write(ttyp->fd, data, n) : -1;
 }

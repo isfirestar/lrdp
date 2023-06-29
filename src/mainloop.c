@@ -7,20 +7,30 @@
 
 struct mainloop
 {
-    void (*preinitproc)(int argc, char **argv);
-    void (*postinitproc)(void *context, unsigned int ctxsize);
-    void (*exitproc)(void);
-    void (*timerproc)(void *context, unsigned int ctxsize);
+    int (*preinitproc)(lobj_pt lop, int argc, char **argv);
+    void (*postinitproc)(lobj_pt lop);
+    void (*exitproc)(lobj_pt lop);
+    void (*timerproc)(lobj_pt lop);
     unsigned int interval;
 };
-typedef struct mainloop mainloop_t, *mainloop_pt;;
+typedef struct mainloop mainloop_t, *mainloop_pt;
+
+void __mloop_atexit(struct lobj *lop)
+{
+    mainloop_pt mloop;
+
+    mloop = lobj_body(mainloop_pt, lop);
+    if (mloop->exitproc) {
+        mloop->exitproc(lop);
+    }
+}
 
 lobj_pt mloop_create(const jconf_entry_pt jentry)
 {
     lobj_pt lop;
     mainloop_pt mloop;
     struct lobj_fx fx = {
-        .freeproc = NULL,
+        .freeproc = &__mloop_atexit,
         .referproc = NULL,
         .writeproc = NULL
     };
@@ -56,7 +66,7 @@ static int __mloop_on_timer(struct aeEventLoop *eventLoop, long long id, void *c
     mloop = lobj_body(mainloop_pt, lop);
 
     if (mloop->timerproc) {
-        mloop->timerproc(lop->ctx, lop->ctxsize);
+        mloop->timerproc(lop);
     }
 
     return mloop->interval;
@@ -77,18 +87,20 @@ void mloop_add_timer(aeEventLoop *el, lobj_pt lop)
     aeCreateTimeEvent(el, mloop->interval , &__mloop_on_timer, lop, NULL);
 }
 
-void mloop_pre_init(lobj_pt lop,int argc, char **argv)
+int mloop_pre_init(lobj_pt lop,int argc, char **argv)
 {
     mainloop_pt mloop;
 
     if (!lop) {
-        return;
+        return -1;
     }
     mloop = lobj_body(mainloop_pt, lop);
 
     if (mloop->preinitproc) {
-        mloop->preinitproc(argc, argv);
-    } 
+        return mloop->preinitproc(lop, argc, argv);
+    }
+
+    return 0;
 }
 
 void mloop_post_init(lobj_pt lop)
@@ -101,6 +113,6 @@ void mloop_post_init(lobj_pt lop)
     mloop = lobj_body(mainloop_pt, lop);
 
     if (mloop->postinitproc) {
-        mloop->postinitproc(lop->ctx, lop->ctxsize);
+        mloop->postinitproc(lop);
     } 
 }

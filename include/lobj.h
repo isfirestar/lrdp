@@ -63,3 +63,4 @@ extern int lobj_write(lobj_pt lop, const void *data, size_t n);
 
 /* object helper function impls */
 extern char *lobj_random_name(char *holder, size_t size);
+extern size_t lobj_get_context(lobj_pt lop, void **ctx);

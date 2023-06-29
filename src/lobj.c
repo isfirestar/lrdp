@@ -92,9 +92,12 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
 
     lop->seq = __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
     strncpy(lop->name, name, sizeof(lop->name) - 1);
-    strncpy(lop->module, module, sizeof(lop->module) - 1);
     if (module) {
+        strncpy(lop->module, module, sizeof(lop->module) - 1);
         lop->handle = ifos_dlopen(module);
+        if (!lop->handle) {
+            printf("%s\n", ifos_dlerror());
+        }
     }
     lop->size = size;
     lop->refcount = 0;
@@ -178,6 +181,10 @@ void *lobj_dlsym(const lobj_pt lop, const char *sym)
         return NULL;
     }
 
+    if (!lop->handle) {
+        return NULL;
+    }
+
     return ifos_dlsym(lop->handle, sym);
 }
 
@@ -253,4 +260,14 @@ char *lobj_random_name(char *holder, size_t size)
     now = getMonotonicUs();
     snprintf(holder, size, "%u|%u|%u", (unsigned int)(now >> 32), (unsigned int)(now & 0xffffffff), redisLrand48());
     return holder;
+}
+
+size_t lobj_get_context(lobj_pt lop, void **ctx)
+{
+    if (!lop || !ctx) {
+        return 0;
+    }
+
+    *ctx = lop->ctx;
+    return lop->ctxsize;
 }

@@ -4,7 +4,7 @@
 
 struct lwp_item
 {
-    void *(*execproc)(void *, unsigned int);
+    void *(*execproc)(lobj_pt lop);
     lwp_t thread;
     unsigned int stacksize;
     unsigned int priority;
@@ -30,7 +30,7 @@ static void *__lwp_start_rtn(void *parameter)
 
     /* invoke module handler function */
     if (lwp->execproc) {
-        retval = lwp->execproc(lop->ctx, lop->ctxsize);
+        retval = lwp->execproc(lop);
     }
 
     lobj_ldestroy(lop);

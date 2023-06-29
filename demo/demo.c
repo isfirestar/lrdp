@@ -7,14 +7,19 @@
 #include "lobj.h"
 #include "zmalloc.h"
 
-int dep_pre_init(int argc, char **argv)
+int dep_pre_init(lobj_pt lop, int argc, char **argv)
 {
     printf("[%d] dep_pre_init\n", ifos_gettid());
     return 0;
 }
 
-void dep_post_init(void *context, unsigned int ctxsize)
+void dep_post_init(lobj_pt lop)
 {
+    void *context;
+    size_t ctxsize;
+
+    context = NULL;
+    ctxsize = lobj_get_context(lop, &context);
     if (!context) {
         printf("[%d] dep_post_init context is NULL\n", ifos_gettid());
         return;
@@ -22,15 +27,19 @@ void dep_post_init(void *context, unsigned int ctxsize)
     *(uint64_t *)context = getMonotonicMs();
 }
 
-void dep_atexit(void)
+void dep_atexit(lobj_pt lop)
 {
     printf("dep_atexit\n");
 }
 
-void dep_on_timer(void *context, unsigned int ctxsize)
+void dep_on_timer(lobj_pt lop)
 {
     uint64_t previous,now;
+    void *context;
+    size_t ctxsize;
 
+    context = NULL;
+    ctxsize = lobj_get_context(lop, &context);
     if (!context) {
         printf("[%d] dep_on_timer context is NULL\n", ifos_gettid());
         return;
@@ -43,7 +52,7 @@ void dep_on_timer(void *context, unsigned int ctxsize)
     printf("[%d] dep_on_timer ms diff: %lu\n", ifos_gettid(), now - previous);
 }
 
-void *dep_bg_exec(void *context, unsigned int ctxsize)
+void *dep_bg_exec(lobj_pt lop)
 {
     int i;
 

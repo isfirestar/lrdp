@@ -57,7 +57,10 @@ int main(int argc, char *argv[])
     }
 
     /* pre-init applicate */
-    mloop_pre_init(mlop, argc - 2, argv + 2);
+    if (0 != mloop_pre_init(mlop, argc - 2, argv + 2)) {
+        printf("mainloop pre-initial failed\n");
+        return 1;
+    }
 
     /* load and create multi-thread component */
     lwp_iterator = jconf_lwp_get_iterator(&lwp_count);
@@ -74,8 +77,9 @@ int main(int argc, char *argv[])
     /* load and create tty component */
     tty_iterator = jconf_tty_get_iterator(&tty_count);
     while (NULL != (tty_iterator = jconf_tty_get(tty_iterator, &jttycfg))) {
-        ttylop = ttyobj_create(jttycfg);
-        ttyobj_add_file(el, ttylop);
+        if (NULL != (ttylop = ttyobj_create(jttycfg))) {
+            ttyobj_add_file(el, ttylop);
+        }
     }
     
     mloop_add_timer(el, mlop);
