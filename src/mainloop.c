@@ -2,7 +2,6 @@
 
 #include "lobj.h"
 #include "zmalloc.h"
-#include "ae.h"
 
 #include <stdio.h>
 
@@ -63,42 +62,22 @@ static int __mloop_on_timer(struct aeEventLoop *eventLoop, long long id, void *c
     return mloop->interval;
 }
 
-int mloop_run(lobj_pt lop)
+void mloop_add_timer(aeEventLoop *el, lobj_pt lop)
 {
-    aeEventLoop *aeloop;
-    long long timerid;
     mainloop_pt mloop;
 
-    if (!lop) {
-        return 1;
+    if (!el || !lop) {
+        return;
     }
     mloop = lobj_body(mainloop_pt, lop);
-
-    /* ok, all other initialize have been finish, invoke post init proc if exist */
-    if (mloop->postinitproc) {
-        mloop->postinitproc(lop->ctx, lop->ctxsize);
+    
+    if (mloop->interval <= 0) {
+        mloop->interval = 1000;
     }
-
-    /*create a timer for main loop */
-    aeloop = aeCreateEventLoop(1);
-    if (aeloop) {
-        timerid = aeCreateTimeEvent(aeloop, (long long)mloop->interval, &__mloop_on_timer, lop, NULL);
-        if (timerid != AE_ERR) {
-            /* main loop */
-            aeMain(aeloop);
-        }
-    }
-
-    /* release resource */
-    if (aeloop) {
-        aeDeleteEventLoop(aeloop);
-    }
-
-    lobj_ldestroy(lop);
-    return 0;
+    aeCreateTimeEvent(el, mloop->interval , &__mloop_on_timer, lop, NULL);
 }
 
-void mloop_preinit(lobj_pt lop,int argc, char **argv)
+void mloop_pre_init(lobj_pt lop,int argc, char **argv)
 {
     mainloop_pt mloop;
 
@@ -109,5 +88,19 @@ void mloop_preinit(lobj_pt lop,int argc, char **argv)
 
     if (mloop->preinitproc) {
         mloop->preinitproc(argc, argv);
+    } 
+}
+
+void mloop_post_init(lobj_pt lop)
+{
+    mainloop_pt mloop;
+
+    if (!lop) {
+        return;
+    }
+    mloop = lobj_body(mainloop_pt, lop);
+
+    if (mloop->postinitproc) {
+        mloop->postinitproc(lop->ctx, lop->ctxsize);
     } 
 }

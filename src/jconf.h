@@ -37,7 +37,7 @@ struct jconf_lwp
 typedef struct jconf_lwp jconf_lwp_t, *jconf_lwp_pt;
 
 extern jconf_iterator_pt jconf_lwp_get_iterator(unsigned int *count);
-extern jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *lwp);
+extern jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *jlwp);
 
 #define JCFG_PROTO_ERR  (0)
 #define JCFG_PROTO_TCP  (6)
@@ -59,4 +59,22 @@ struct jconf_net
 typedef struct jconf_net jconf_net_t, *jconf_net_pt;
 
 extern jconf_iterator_pt jconf_net_get_iterator(unsigned int *count);
-extern jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *net);
+extern jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets);
+
+struct jconf_tty
+{
+    JCONF_DECLARE_NORMAL_STRING(name);
+    JCONF_DECLARE_NORMAL_STRING(module);
+    JCONF_DECLARE_NORMAL_STRING(recvproc);
+    JCONF_DECLARE_STRING(device, 128);
+    unsigned int baudrate;
+    unsigned int databits;
+    unsigned int stopbits;
+    JCONF_DECLARE_STRING(parity, 8);
+    JCONF_DECLARE_STRING(flowcontrol, 16);
+    unsigned int contextsize;
+};
+typedef struct jconf_tty jconf_tty_t, *jconf_tty_pt;
+
+extern jconf_iterator_pt jconf_tty_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_tty_get(jconf_iterator_pt iterator, jconf_tty_pt *jttys);

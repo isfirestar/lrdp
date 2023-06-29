@@ -24,4 +24,4 @@ struct netobj
     struct endpoint local;
 };
 
-void netobj_create(const jconf_net_pt jnetcfg);
+extern void netobj_create(const jconf_net_pt jnetcfg);

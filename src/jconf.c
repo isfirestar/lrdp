@@ -64,6 +64,7 @@ jconf_entry_pt jconf_entry_get(void)
 
 static void __jconf_lwp_load(cJSON *entry);
 static void __jconf_net_load(cJSON *entry);
+static void __jconf_tty_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -118,6 +119,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_lwp_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "nets")) {
                 __jconf_net_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "ttys")) {
+                __jconf_tty_load(jcursor);
             } else {
                 ;
             }
@@ -163,7 +166,7 @@ struct jconf_lwp_inner
     struct list_head ele_of_inner_lwp;
 };
 
-static struct list_head jlwps = { &jlwps, &jlwps };
+static struct list_head g_jlwps_head = { &g_jlwps_head, &g_jlwps_head };
 static unsigned int jlwps_count = 0;
 
 /* load json section "lwps", it contant many of subsection.
@@ -220,7 +223,7 @@ static void __jconf_lwp_load(cJSON *entry)
                 jconf_lwp = jconf_lwp->next;
             }
 
-            list_add_tail(&lwp->ele_of_inner_lwp, &jlwps);
+            list_add_tail(&lwp->ele_of_inner_lwp, &g_jlwps_head);
             jlwps_count++;
         }
         jcursor = jcursor->next;
@@ -244,27 +247,27 @@ jconf_iterator_pt jconf_lwp_get_iterator(unsigned int *count)
         return NULL;
     }
 
-    iterator->cursor = jlwps.next;
+    iterator->cursor = g_jlwps_head.next;
     return iterator;
 }
 
-jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *lwp)
+jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *jlwp)
 {
     struct list_head *cursor;
     struct jconf_lwp_inner *inner;
 
-    if (!iterator || !lwp) {
+    if (!iterator || !jlwp) {
         return NULL;
     }
 
     cursor = iterator->cursor;
-    if (cursor == &jlwps) {
+    if (cursor == &g_jlwps_head) {
         zfree(iterator);
         return NULL;
     }
 
     inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner_lwp);
-    *lwp  = &inner->body;
+    *jlwp  = &inner->body;
     iterator->cursor = cursor->next;
     return iterator;
 }
@@ -277,7 +280,7 @@ struct jconf_net_inner
     struct jconf_net body;
     struct list_head ele_of_inner_net;
 };
-static struct list_head jnets = { &jnets, &jnets };
+static struct list_head g_jnets_head = { &g_jnets_head, &g_jnets_head };
 static unsigned int jnets_count = 0;
 
 /* load json section "nets", it contant many of subsection.
@@ -349,7 +352,7 @@ static void __jconf_net_load(cJSON *entry)
                 jnet = jnet->next;
             }
 
-            list_add_tail(&net->ele_of_inner_net, &jnets);
+            list_add_tail(&net->ele_of_inner_net, &g_jnets_head);
             jnets_count++;
         }
         jcursor = jcursor->next;
@@ -373,27 +376,149 @@ jconf_iterator_pt jconf_net_get_iterator(unsigned int *count)
         return NULL;
     }
 
-    iterator->cursor = jnets.next;
+    iterator->cursor = g_jnets_head.next;
     return iterator;
 }
 
-jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *net)
+jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets)
 {
     struct list_head *cursor;
     struct jconf_net_inner *inner;
 
-    if (!iterator || !net) {
+    if (!iterator || !jnets) {
         return NULL;
     }
 
     cursor = iterator->cursor;
-    if (cursor == &jnets) {
+    if (cursor == &g_jnets_head) {
         zfree(iterator);
         return NULL;
     }
 
     inner = container_of(cursor, struct jconf_net_inner, ele_of_inner_net);
-    *net  = &inner->body;
+    *jnets  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+/* ----------------------------------------------------------------------------------------------------------------------------- 
+ * ------------------------------------------        TTY IMPLEMENTATIONs        ------------------------------------------------ 
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_tty_inner
+{
+    struct jconf_tty body;
+    struct list_head ele_of_inner_tty;
+};
+static struct list_head g_jtty_head = { &g_jtty_head, &g_jtty_head };
+static unsigned int jtty_count = 0;
+
+/* load json section "tty", it contant many of subsection.
+ * name of every section indicate the name of user thread and every object have below fields:
+ *  1. "module", string, require, specify the module of handler function
+ *  2. "device", string, require, specify the device of this tty which in /dev
+ *  3. "recvproc", string, require, specify the handler function name
+ *  4. "baudrate", number, require, specify the baudrate of this tty
+ *  5. "databits", number, require, specify the databits of this tty, can be 5, 6, 7, 8
+ *  6. "stopbits", number, require, specify the stopbits of this tty, can be 1 or 2
+ *  7. "parity", string, require, specify the parity of this tty, can be "none", "odd", "even"
+ *  8. "flowcontrol", string, require, specify the flowcontrol of this tty, can be "none", "Xon/Xoff", "Rts/Cts", "Dsr/Dtr"
+ * we load all sub sections in parent section "tty", create many object for "struct jconf_net_inner", and link them to the list "jtty"
+ * meanwhile, we shall increase the count of net objects "jtty_count"
+ */
+static void __jconf_tty_load(cJSON *entry)
+{
+    cJSON *jcursor, *jtty;
+    struct jconf_tty_inner *tty;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+        if (jcursor->type == cJSON_Object) {
+            tty = ztrycalloc(sizeof(*tty));
+            if (!tty) {
+                break;
+            }
+            strncpy(tty->body.name, jcursor->string, sizeof(tty->body.name) - 1);
+
+            jtty = jcursor->child;
+            while (jtty) {
+                if (jtty->type == cJSON_String) {
+                    if (0 == strcasecmp(jtty->string, "module")) {
+                        strncpy(tty->body.module, jtty->valuestring, sizeof(tty->body.module) - 1);
+                    } else if (0 == strcasecmp(jtty->string, "device")) {
+                        strncpy(tty->body.device, jtty->valuestring, sizeof(tty->body.device) - 1);
+                    } else if (0 == strcasecmp(jtty->string, "recvproc")) {
+                        strncpy(tty->body.recvproc, jtty->valuestring, sizeof(tty->body.recvproc) - 1);
+                    } else if (0 == strcasecmp(jtty->string, "parity")) {
+                        strncpy(tty->body.parity, jtty->valuestring, sizeof(tty->body.parity) - 1);
+                    } else if (0 == strcasecmp(jtty->string, "flowcontrol")) {
+                        strncpy(tty->body.flowcontrol, jtty->valuestring, sizeof(tty->body.flowcontrol) - 1);
+                    } else {
+                        ;
+                    }
+                } else if (jtty->type == cJSON_Number) {
+                    if (0 == strcasecmp(jtty->string, "baudrate")) {
+                        tty->body.baudrate = jtty->valueint;
+                    } else if (0 == strcasecmp(jtty->string, "databits")) {
+                        tty->body.databits = jtty->valueint;
+                    } else if (0 == strcasecmp(jtty->string, "stopbits")) {
+                        tty->body.stopbits = jtty->valueint;
+                    } else {
+                        ;
+                    }
+                } else {
+                    ;
+                }
+
+                jtty = jtty->next;
+            }
+
+            list_add_tail(&tty->ele_of_inner_tty, &g_jtty_head);
+            jtty_count++;
+        }
+
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_tty_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jtty_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jtty_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_tty_get(jconf_iterator_pt iterator, jconf_tty_pt *jttys)
+{
+    struct list_head *cursor;
+    struct jconf_tty_inner *inner;
+
+    if (!iterator || !jttys) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jtty_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_tty_inner, ele_of_inner_tty);
+    *jttys  = &inner->body;
     iterator->cursor = cursor->next;
     return iterator;
 }

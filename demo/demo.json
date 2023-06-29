@@ -42,5 +42,20 @@
             "recvproc" : "dep_tcp_on_received",
             "closeproc" : "dep_tcp_on_closed"
         }
+    },
+
+    "ttys" : {
+        "motionmcu" : {
+            "module" : "libdemo.so",
+            "device" : "/dev/uart1",
+            "baudrate" : 38400,
+            "databits" : 8,
+            "stopbits" : 1,
+            "parity" : "none",
+            "flowcontrol" : "none",
+            "recvproc" : "dep_ser_on_received",
+            "closeproc" : "dep_ser_on_closed",
+            "contextsize" : 0
+        }
     }
 }
