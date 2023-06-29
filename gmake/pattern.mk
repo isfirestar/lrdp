@@ -107,7 +107,7 @@ all: .mkdir .invoke $(TAGS_DIR)$(TARGET)
 
 define build_obj_x
 $$(obj-$1): $2%.$1.o: %.$1  $(MAKEFILE_LIST)
-	@echo compiling $$<
+	@echo CC $$<
 	@$(CC) -Wp,-MT,$$@ -Wp,-MMD,$$@.d -c $$< $(INCS) $(CFLAGS) $(CFLAGS_ADDON) $3 -o $$@
 
 endef
@@ -115,14 +115,14 @@ $(eval $(foreach i,$(SRC_SUFFIX),$(call build_obj_x,$i,$(OBJS_DIR),$(if $(filter
 
 ifeq ($(TARGET_TYPE), $(filter $(TARGET_TYPE), lib static))
 $(TAGS_DIR)$(TARGET): $(OBJS)
-	@echo archiving $@
+	@echo CC $@
 	@$(AR) crv $@ $^
 else
 #LDFLAGS += $(if $(strip $(src-cpp) $(src-cc) $(src-cxx)), -lstdc++)
 $(TAGS_DIR)$(TARGET): LD = $(if $(strip $(src-cpp) $(src-cc) $(src-cxx)),$(G++),$(CC))
 $(TAGS_DIR)$(TARGET): $(OBJS)
 	$(shell $(PRE_LINK_ORDER))
-	@echo linking $@
+	@echo CC $@
 	@$(LD) -o $@ $^ $(LDFLAGS)
 	$(shell $(POST_LINK_ORDER))
 endif

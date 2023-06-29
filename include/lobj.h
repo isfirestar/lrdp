@@ -12,7 +12,11 @@
 
 #include "compiler.h"
 
+typedef int64_t lobj_seq_t;
+
 struct lobj;
+typedef struct lobj *lobj_pt;
+
 typedef void (*freeproc_pfn)(struct lobj *lop);
 typedef void (*refer_pfn)(struct lobj *lop);
 typedef int (*write_pfn)(struct lobj *lop, const void *data, size_t n);
@@ -24,43 +28,26 @@ struct lobj_fx
     write_pfn writeproc;
 };
 
-enum lobj_status
-{
-    LOS_NORMAL = 0,
-    LOS_CLOSE_WAIT,
-    LOS_CLOSED,
-};
-
-struct lobj
-{
-    int64_t seq;               // seq id of object
-    char name[LOBJ_MAX_NAME_LEN];   // name of object
-    char module[256];               // host share library name of object
-    void *handle;                   // host share library handle of object
-    int refcount;                   // reference count of object
-    enum lobj_status status;        // status of object
-    struct lobj_fx fx;              // function table of object
-    size_t ctxsize;                 // size of object context
-    unsigned char *ctx;             // context of object
-    size_t size;                    // size of object body, exclude lobj_t
-    unsigned char body[0];
-};
-typedef struct lobj lobj_t, *lobj_pt;
-
-#define lobj_body(type, lop) ((type)((lop)->body))
-#define lobj_head(body) ((lobj_pt)(((unsigned char *)(body)) - offsetof(lobj_t, body)))
-
 extern nsp_status_t lobj_init();
 extern lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx);
+extern lobj_pt lobj_dup(const char *name, const lobj_pt olop);
 extern void lobj_destroy(const char *name);
-extern void lobj_destroy_byseq(int64_t seq);
+extern void lobj_destroy_byseq(lobj_seq_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
-extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
 extern lobj_pt lobj_refer(const char *name);
-extern lobj_pt lobj_refer_byseq(int64_t seq);
+extern lobj_pt lobj_refer_byseq(lobj_seq_t seq);
 extern void lobj_derefer(lobj_pt lop);
+
+/* write data according to the lite object, this IO request will be dispatch to low-level object entity */
 extern int lobj_write(lobj_pt lop, const void *data, size_t n);
 
 /* object helper function impls */
+extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
 extern char *lobj_random_name(char *holder, size_t size);
 extern size_t lobj_get_context(lobj_pt lop, void **ctx);
+extern void *lobj_get_body(lobj_pt lop); // return lop->body
+extern const void *lobj_cget_body(const lobj_pt lop); // return lop->body
+extern lobj_seq_t lobj_get_seq(lobj_pt lop);
+extern const char *lobj_get_name(lobj_pt lop);
+
+#define lobj_body(type, lop) ((type)lobj_get_body(lop))

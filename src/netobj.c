@@ -65,16 +65,13 @@ static nsp_status_t __netobj_parse_endpoint(const char *epstr, struct endpoint *
 static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
 {
     lobj_pt slop, clop;
-    int64_t *sseq;
+    lobj_seq_t sseq;
     struct netobj *snetp, *cnetp;
     char holder[LOBJ_MAX_NAME_LEN], *cname;
+    lobj_seq_t seq;
 
-    nis_cntl(slink, NI_GETCTX, &sseq);
-    if (!sseq) {
-        return;
-    }
-
-    slop = lobj_refer_byseq(*sseq);
+    nis_cntl(slink, NI_GETCTX, (void **)&sseq);
+    slop = lobj_refer_byseq(sseq);
     if (!slop) {
         return;
     }
@@ -85,7 +82,7 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
     }
 
     cname = lobj_random_name(holder, sizeof(holder) - 1);
-    clop = lobj_create(cname, slop->module, slop->size, slop->ctxsize, &slop->fx);
+    clop = lobj_dup(cname, slop);
     if (clop) {
         cnetp = lobj_body(struct netobj *, clop);
         cnetp->link = clink;
@@ -102,7 +99,8 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
             snetp->acceptproc(clop);
         }
         // save seq to link context
-        nis_cntl(clink, NI_SETCTX, &clop->seq);
+        seq = lobj_get_seq(clop);
+        nis_cntl(clink, NI_SETCTX, (void *)seq);
     }
 
     lobj_derefer(slop);
@@ -249,6 +247,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
     };
     struct netobj *netp;
     nsp_status_t status;
+    lobj_seq_t seq;
 
     if (!jnetcfg) {
         return;
@@ -297,7 +296,8 @@ void netobj_create(const jconf_net_pt jnetcfg)
                 break;
             }
 
-            nis_cntl(netp->link, NI_SETCTX, &lop->seq);
+            seq = lobj_get_seq(lop);
+            nis_cntl(netp->link, NI_SETCTX, (void *)seq);
             if (0 != netp->remote.ip[0]) {
                 status = tcp_connect(netp->link, netp->remote.ip, netp->remote.port);
             } else {
@@ -317,5 +317,5 @@ void netobj_create(const jconf_net_pt jnetcfg)
     }while(0);
 
     // error occured, destroy the object
-    lobj_destroy(lop->name);
+    lobj_ldestroy(lop);
 }

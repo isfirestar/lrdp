@@ -23,7 +23,7 @@ static void *__lwp_start_rtn(void *parameter)
     lwp = lobj_body(struct lwp_item *, lop);
 
     /* save name of this thread which specify by json config */
-    lwp_setname(&lwp->thread, lop->name);
+    lwp_setname(&lwp->thread, lobj_get_name(lop));
 
     /* adjust thread CPU affinity if needed */
     lwp_setaffinity(&lwp->thread, lwp->affinity);

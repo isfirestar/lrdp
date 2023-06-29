@@ -5,9 +5,34 @@
 #include "monotonic.h"
 #include "ifos.h"
 #include "rand.h"
+#include "spinlock.h"
+
+enum lobj_status
+{
+    LOS_NORMAL = 0,
+    LOS_CLOSE_WAIT,
+    LOS_CLOSED,
+};
+
+struct lobj
+{
+    lobj_seq_t seq;                 // seq id of object
+    char name[LOBJ_MAX_NAME_LEN];   // name of object
+    char module[256];               // host share library name of object
+    void *handle;                   // host share library handle of object
+    int refcount;                   // reference count of object
+    enum lobj_status status;        // status of object
+    struct lobj_fx fx;              // function table of object
+    size_t ctxsize;                 // size of object context
+    unsigned char *ctx;             // context of object
+    size_t size;                    // size of object body, exclude lobj_t
+    unsigned char body[0];
+};
+typedef struct lobj lobj_t;
 
 static dict *g_dict_hash_byname = NULL;
 static dict *g_dict_hash_byseq = NULL;
+static struct spin_lock g_lobj_container_locker = SPIN_LOCK_INITIALIZER;
 
 static uint64_t __lobj_hash_name(const void *key)
 {
@@ -77,10 +102,39 @@ nsp_status_t lobj_init()
     return NSP_STATUS_SUCCESSFUL;
 }
 
+static lobj_pt __lobj_add_dict(lobj_pt lop)
+{
+    int dictResult;
+
+    if (!lop) {
+        return NULL;
+    }
+
+    acquire_spinlock(&g_lobj_container_locker);
+    dictResult = dictAdd(g_dict_hash_byname, lop->name, lop);
+    if (DICT_OK == dictResult) {
+        dictResult = dictAdd(g_dict_hash_byseq, &lop->seq, lop);
+    }
+    if (DICT_OK != dictResult) {
+        dictDelete(g_dict_hash_byname, lop->name);
+        dictDelete(g_dict_hash_byseq, &lop->seq);
+    }
+    release_spinlock(&g_lobj_container_locker);
+
+    if (DICT_OK != dictResult) {
+        if (lop->ctx) {
+            zfree(lop->ctx);
+        }
+        zfree(lop);
+        return NULL;
+    }
+    return lop;
+}
+
 lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx)
 {
     lobj_pt lop;
-
+    
     if (!name || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
         return NULL;
     }
@@ -109,18 +163,37 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
     }
 
-    if (DICT_OK != dictAdd(g_dict_hash_byname, lop->name, lop)) {
-        zfree(lop);
-        lop = NULL;
+    return __lobj_add_dict(lop);
+}
+
+lobj_pt lobj_dup(const char *name, const lobj_pt olop)
+{
+    lobj_pt lop;
+
+    if (!name || !olop || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
+        return NULL;
     }
 
-    if (DICT_OK != dictAdd(g_dict_hash_byseq, &lop->seq, lop)) {
-        dictDelete(g_dict_hash_byname, lop->name);
-        zfree(lop);
-        lop = NULL;
+    lop = (lobj_pt)ztrycalloc(sizeof(lobj_t) + olop->size);
+    if (!lop) {
+        return NULL;
     }
 
-    return lop;
+    lop->seq = __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
+    strncpy(lop->name, name, sizeof(lop->name) - 1);
+    strncpy(lop->module, olop->module, sizeof(lop->module) - 1);
+    lop->handle = olop->handle;
+    lop->size = olop->size;
+    lop->refcount = 0;
+    lop->status = LOS_NORMAL;
+    memcpy(&lop->fx, &olop->fx, sizeof(lop->fx));
+    lop->ctx = NULL;
+    lop->ctxsize = olop->ctxsize;
+    if (lop->ctxsize > 0) {
+        lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
+    }
+
+    return __lobj_add_dict(lop);
 }
 
 static void __lobj_release(lobj_pt lop)
@@ -133,8 +206,11 @@ static void __lobj_release(lobj_pt lop)
         zfree(lop->ctx);
     }
 
+    acquire_spinlock(&g_lobj_container_locker);
     dictDelete(g_dict_hash_byname, lop->name);
     dictDelete(g_dict_hash_byseq, &lop->seq);
+    release_spinlock(&g_lobj_container_locker);
+
     zfree(lop);
 }
 
@@ -146,8 +222,10 @@ void lobj_destroy(const char *name)
         return;
     }
 
+    acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byname, name);
     lobj_ldestroy(lop);
+    release_spinlock(&g_lobj_container_locker);
 }
 
 void lobj_destroy_byseq(int64_t seq)
@@ -158,8 +236,10 @@ void lobj_destroy_byseq(int64_t seq)
         return;
     }
 
+    acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byseq, &seq);
     lobj_ldestroy(lop);
+    release_spinlock(&g_lobj_container_locker);
 }
 
 void lobj_ldestroy(lobj_pt lop)
@@ -168,8 +248,8 @@ void lobj_ldestroy(lobj_pt lop)
         return;
     }
 
-    if (lop->refcount > 0) {
-        lop->status = LOS_CLOSE_WAIT;
+    if (__atomic_load_n(&lop->refcount, __ATOMIC_ACQUIRE) > 0) {
+        __atomic_store_n(&lop->status, LOS_CLOSE_WAIT, __ATOMIC_RELEASE);
     } else {
         __lobj_release(lop);
     }
@@ -196,9 +276,12 @@ lobj_pt lobj_refer(const char *name)
         return NULL;
     }
 
+    acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byname, name);
+    release_spinlock(&g_lobj_container_locker);
+
     if (lop) {
-        lop->refcount++;
+        __atomic_add_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST);
         if (lop->fx.referproc) {
             lop->fx.referproc(lop);
         }
@@ -214,9 +297,12 @@ lobj_pt lobj_refer_byseq(int64_t seq)
         return NULL;
     }
 
+    acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byseq, &seq);
+    release_spinlock(&g_lobj_container_locker);
+
     if (lop) {
-        lop->refcount++;
+        __atomic_add_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST);
         if (lop->fx.referproc) {
             lop->fx.referproc(lop);
         }
@@ -230,11 +316,13 @@ void lobj_derefer(lobj_pt lop)
         return;
     }
 
-    if (lop->refcount > 0) {
-        lop->refcount--;
+    if (__atomic_load_n(&lop->refcount, __ATOMIC_ACQUIRE) <= 0) {
+        return;
     }
 
-    if (0 == lop->refcount && LOS_CLOSE_WAIT == lop->status) {
+    if (0 == __atomic_sub_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST) && 
+        LOS_CLOSE_WAIT == __atomic_load_n(&lop->status, __ATOMIC_ACQUIRE)) 
+    {
         __lobj_release(lop);
     }
 }
@@ -270,4 +358,40 @@ size_t lobj_get_context(lobj_pt lop, void **ctx)
 
     *ctx = lop->ctx;
     return lop->ctxsize;
+}
+
+void *lobj_get_body(lobj_pt lop)
+{
+    if (!lop) {
+        return NULL;
+    }
+
+    return lop->body;
+}
+
+const void *lobj_cget_body(const lobj_pt lop)
+{
+    if (!lop) {
+        return NULL;
+    }
+
+    return (const void *)lop->body;
+}
+
+lobj_seq_t lobj_get_seq(lobj_pt lop)
+{
+    if (!lop) {
+        return -1;
+    }
+
+    return lop->seq;
+}
+
+const char *lobj_get_name(lobj_pt lop)
+{
+    if (!lop) {
+        return " ";
+    }
+
+    return &lop->name[0];
 }
