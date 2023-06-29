@@ -1,19 +1,31 @@
 {
     "mainloop" : {
-        "module" : "libdemo.so",
+        "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
         "preinitproc" : "dep_pre_init",
         "postinitproc" : "dep_post_init",
         "exitproc" : "dep_atexit",
-        "contextsize" : 128,
+        "contextsize" : 128
+    },
+
+    "timers" : {
         "entrytimer" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "interval" : 1000,
-            "timerproc" : "dep_on_timer"
+            "timerproc" : "dep_on_timer",
+            "contextsize" : 16
+        },
+
+        "debuger" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "interval" : 500,
+            "timerproc" : "dep_debuger",
+            "contextsize" : 16
         }
     },
 
     "lwps" : {
         "demobg" : {
-            "module" : "libdemo.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "execproc" : "dep_bg_exec",
             "stacksize" : 1024,
             "priority" : 0,
@@ -25,7 +37,7 @@
     "nets" : {
         "testsrv" : {
             "protocol" : "tcp",
-            "module" : "libdemo.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "listen" : "0.0.0.0:10256",
             "acceptproc" : "dep_tcp_on_accept",
             "recvproc" : "dep_tcp_on_received",
@@ -35,7 +47,7 @@
 
         "testcli" : {
             "protocol" : "tcp",
-            "module" : "libdemo.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "local" : "0.0.0.0:10255",
             "remote" : "127.0.0.1:10256",
             "connectproc" : "dep_tcp_on_connected",
@@ -46,7 +58,7 @@
 
     "ttys" : {
         "motionmcu" : {
-            "module" : "libdemo.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "device" : "/dev/uart1",
             "baudrate" : 38400,
             "databits" : 8,

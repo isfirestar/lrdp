@@ -20,7 +20,7 @@
  *  5. convert port string to unsigned short and copy to endpoint structure "port" filed, use little endian
  *  6. convert ip string to unsigned int and copy to endpoint structure "inet" filed, use little endian
  */
-static nsp_status_t __netobj_parse_endpoint(const char *epstr, struct endpoint *epo)
+nsp_status_t netobj_parse_endpoint(const char *epstr, struct endpoint *epo)
 {
     char *p;
     char *nextToken;
@@ -109,15 +109,15 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
 static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int size)
 {
     lobj_pt lop;
-    int64_t *seq = NULL;
+    lobj_seq_t seq;
     struct netobj *netp;
-    
-    nis_cntl(link, NI_GETCTX, &seq);
+
+    nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
         return;
     }
 
-    lop = lobj_refer_byseq(*seq);
+    lop = lobj_refer_byseq(seq);
     if (!lop) {
         return;
     }
@@ -133,15 +133,15 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
 static void __netobj_tcp_connected(HTCPLINK link)
 {
     lobj_pt lop;
-    int64_t *seq = NULL;
+    lobj_seq_t seq;
     struct netobj *netp;
-    
-    nis_cntl(link, NI_GETCTX, &seq);
+
+    nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
         return;
     }
 
-    lop = lobj_refer_byseq(*seq);
+    lop = lobj_refer_byseq(seq);
     if (!lop) {
         return;
     }
@@ -157,15 +157,15 @@ static void __netobj_tcp_connected(HTCPLINK link)
 static void __netobj_prclose(HTCPLINK link)
 {
     lobj_pt lop;
-    int64_t *seq = NULL;
+    lobj_seq_t seq;
     struct netobj *netp;
-    
-    nis_cntl(link, NI_GETCTX, &seq);
+
+    nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
         return;
     }
 
-    lop = lobj_refer_byseq(*seq);
+    lop = lobj_refer_byseq(seq);
     if (!lop) {
         return;
     }
@@ -180,7 +180,7 @@ static void __netobj_prclose(HTCPLINK link)
 
 static void STDCALL __netobj_tcp_io(const struct nis_event *event, const void *data)
 {
-    
+
     tcp_data_t *tcpdata;
 
     tcpdata = (tcp_data_t *)data;
@@ -254,7 +254,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
     }
 
     // create object first
-    lop = lobj_create(jnetcfg->name, jnetcfg->module, sizeof(struct netobj), jnetcfg->contextsize, &fx);
+    lop = lobj_create(jnetcfg->head.name, jnetcfg->head.module, sizeof(struct netobj), jnetcfg->head.ctxsize, &fx);
     if (!lop) {
         return;
     }
@@ -271,9 +271,9 @@ void netobj_create(const jconf_net_pt jnetcfg)
         }
 
         // convert endpoint string to endpoint structure
-        __netobj_parse_endpoint(jnetcfg->listen, &netp->listen);
-        __netobj_parse_endpoint(jnetcfg->remote, &netp->remote);
-        __netobj_parse_endpoint(jnetcfg->local, &netp->local);
+        netobj_parse_endpoint(jnetcfg->listen, &netp->listen);
+        netobj_parse_endpoint(jnetcfg->remote, &netp->remote);
+        netobj_parse_endpoint(jnetcfg->local, &netp->local);
 
         // pass callback function from config to object
         netp->recvproc = lobj_dlsym(lop, jnetcfg->recvproc);

@@ -10,6 +10,7 @@ struct ttyobj
     struct termios options;
     void (*recvproc)(lobj_pt lop, const void *data, unsigned int size);
     char device[128];
+    struct aeEventLoop *el;
 };
 
 /* this macro use to convert visibility databit value to linux databit definition */
@@ -92,7 +93,17 @@ static int __ttyobj_set_baudrate(unsigned int baudrate, struct termios *options)
 
 static void __ttyobj_on_free(struct lobj *lop)
 {
-    struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
+    struct ttyobj *ttyp;
+
+    ttyp = lobj_body(struct ttyobj *, lop);
+
+    if (!ttyp) {
+        return;
+    }
+
+    if (ttyp->el) {
+        aeDeleteFileEvent(ttyp->el, ttyp->fd, AE_READABLE);
+    }
 
     if (ttyp->fd > 0) {
         close(ttyp->fd);
@@ -106,7 +117,7 @@ static int __ttyobj_write(struct lobj *lop, const void *data, size_t n)
     if (!lop || !data || !n) {
         return -1;
     }
-    
+
     ttyp = lobj_body(struct ttyobj *, lop);
 
     return (ttyp->fd > 0) ? write(ttyp->fd, data, n) : -1;
@@ -125,8 +136,8 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
     if (!jtty) {
         return NULL;
     }
-        
-    lop = lobj_create(jtty->name, jtty->module, sizeof(*ttyp), jtty->contextsize, &fx);
+
+    lop = lobj_create(jtty->head.name, jtty->head.module, sizeof(*ttyp), jtty->head.ctxsize, &fx);
     if (!lop) {
         return NULL;
     }
@@ -149,7 +160,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         if (!__ttyobj_set_baudrate(jtty->baudrate, &ttyp->options)) {
             __ttyobj_set_baudrate(9600, &ttyp->options);
         }
-        
+
         // Enable the receiver and set local mode
         ttyp->options.c_cflag |= (CLOCAL | CREAD);
         ttyp->options.c_cflag &= ~CSIZE;
@@ -168,7 +179,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
             printf("invalid parity %s\n", jtty->parity);
             break;
         }
-        
+
         /* stop bits 1 */
         if (1 == jtty->stopbits) {
             ttyp->options.c_cflag &= ~CSTOPB;
@@ -196,21 +207,21 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
             printf("invalid flowcontrol %s\n", jtty->flowcontrol);
             break;
         }
-        
+
         /* data bits */
         if (!__ttyobj_set_databit(jtty->databits, &ttyp->options)) {
             __ttyobj_set_databit(8, &ttyp->options);
         }
 
         /* set parity */
-        ttyp->options.c_cc[VTIME] = 50; 
+        ttyp->options.c_cc[VTIME] = 50;
         ttyp->options.c_cc[VMIN] = 0;
         ttyp->options.c_lflag &= ~(ECHO|ECHOE|ISIG|ICANON);
         ttyp->options.c_oflag &= ~OPOST;
         ttyp->options.c_iflag &= ~(IXON|IXOFF|INLCR|IGNCR|ICRNL);
 
         tcflush(ttyp->fd, TCIFLUSH); // Discards old data in the rx buffer
-    
+
         // Set the new options for the port
         if (0 != tcsetattr(ttyp->fd, TCSANOW, &ttyp->options)) {
             printf("ttyobj: %s set options failed\n", ttyp->device);
@@ -224,7 +235,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
     return NULL;
 }
 
-static void __ttyobj_read(struct aeEventLoop *eventLoop, int fd, void *clientData, int mask)
+static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
 {
     lobj_pt lop = (lobj_pt)clientData;
     struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
@@ -238,7 +249,7 @@ static void __ttyobj_read(struct aeEventLoop *eventLoop, int fd, void *clientDat
         }
     } else if (n < 0) {
         if (errno != EAGAIN) {
-            aeDeleteFileEvent(eventLoop, fd, AE_READABLE);
+            aeDeleteFileEvent(el, fd, AE_READABLE);
             printf("ttyobj: %s read error: %s\n", ttyp->device, strerror(errno));
         }
     } else {
@@ -246,12 +257,13 @@ static void __ttyobj_read(struct aeEventLoop *eventLoop, int fd, void *clientDat
     }
 }
 
-void ttyobj_add_file(struct aeEventLoop *eventLoop, lobj_pt lop)
+void ttyobj_add_file(struct aeEventLoop *el, lobj_pt lop)
 {
     struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
 
+    ttyp->el = el;
     if (ttyp->fd > 0) {
-        aeCreateFileEvent(eventLoop, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);
+        aeCreateFileEvent(el, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);
     }
 }
 

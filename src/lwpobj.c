@@ -53,7 +53,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
         return posix__makeerror(EINVAL);
     }
 
-    lop = lobj_create(jlwpcfg->name, jlwpcfg->module, sizeof(struct lwp_item), jlwpcfg->contextsize, &fx);
+    lop = lobj_create(jlwpcfg->head.name, jlwpcfg->head.module, sizeof(struct lwp_item), jlwpcfg->head.ctxsize, &fx);
     if (!lop) {
         return posix__makeerror(ENOMEM);
     }

@@ -1,13 +1,13 @@
 {
     "mainloop" : {
-        "module" : "librbmcu.so",
+        "module" : "/mnt/d/git/my/lrdp/gmake/build/bin/librbmcu.so",
         "preinitproc" : "rb_mcu_init",
         "contextsize" : 32
     },
 
     "lwps" : {
-        "demobg" : {
-            "module" : "librbmcu.so",
+        "updatev" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/build/bin/librbmcu.so",
             "execproc" : "rb_mcu_on_velocity_update",
             "stacksize" : 1024,
             "priority" : 0,
@@ -18,7 +18,7 @@
 
     "ttys" : {
         "motionmcu" : {
-            "module" : "librbmcu.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/build/bin/librbmcu.so",
             "device" : "/dev/uart1",
             "baudrate" : 38400,
             "databits" : 8,
@@ -30,10 +30,17 @@
         }
     },
 
+    "redis-server" : {
+        "myrobot" : {
+            "host" : "127.0.0.1:6379",
+            "contextsize" : 0
+        }
+    },
+
     "subscribe" : {
         "velocity" : {
-            "redis-server" : "127.0.0.1:6379",
-            "module" : "librbmcu.so",
+            "redis-server" : "myrobot",
+            "module" : "/mnt/d/git/my/lrdp/gmake/build/bin/librbmcu.so",
             "execproc" : "rb_mcu_on_velocity_update",
             "pattern" : [
                 "motion.velocity.?*",

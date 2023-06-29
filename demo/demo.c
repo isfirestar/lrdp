@@ -52,6 +52,26 @@ void dep_on_timer(lobj_pt lop)
     printf("[%d] dep_on_timer ms diff: %lu\n", ifos_gettid(), now - previous);
 }
 
+void dep_debuger(lobj_pt lop)
+{
+    uint64_t previous,now;
+    void *context;
+    size_t ctxsize;
+
+    context = NULL;
+    ctxsize = lobj_get_context(lop, &context);
+    if (!context) {
+        printf("[%d] dep_on_timer context is NULL\n", ifos_gettid());
+        return;
+    }
+
+    previous = *(uint64_t *)context;
+    now = getMonotonicMs();
+    *(uint64_t *)context = now;
+
+    printf("[%d] dep_debuger ms diff: %lu\n", ifos_gettid(), now - previous);
+}
+
 void *dep_bg_exec(lobj_pt lop)
 {
     int i;

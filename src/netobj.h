@@ -25,3 +25,4 @@ struct netobj
 };
 
 extern void netobj_create(const jconf_net_pt jnetcfg);
+extern nsp_status_t netobj_parse_endpoint(const char *epstr, struct endpoint *epo);
