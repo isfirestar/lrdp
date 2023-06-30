@@ -7,9 +7,9 @@
 #include <stdio.h>
 #include <time.h>
 
-int rb_mcu_init(lobj_pt lop, int argc, char **argv)
+int nav_entry(lobj_pt lop, int argc, char **argv)
 {
-    printf("[%d] rb_mcu_init\n", ifos_gettid());
+    printf("[%d] nav_entry\n", ifos_gettid());
     return 0;
 }
 
