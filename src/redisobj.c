@@ -59,3 +59,11 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg)
 
     lobj_ldestroy(lop);
 }
+
+void *redisobj_get_connection(lobj_pt lop)
+{
+    struct redisobj *rdsobj;
+
+    rdsobj = lobj_body(struct redisobj *, lop);
+    return rdsobj->c;
+}

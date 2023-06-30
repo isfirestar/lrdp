@@ -2,7 +2,6 @@
 #include "ifos.h"
 #include "zmalloc.h"
 #include "cjson.h"
-#include "clist.h"
 
 static struct jconf_entry jentry = { .preinitproc = { 0 }, .postinitproc = { 0 }, .exitproc = { 0 },
     .head = { .ctxsize = 0, .module = { 0 }, .name = { 0 } } };
@@ -55,6 +54,7 @@ static void __jconf_net_load(cJSON *entry);
 static void __jconf_tty_load(cJSON *entry);
 static void __jconf_timer_load(cJSON *entry);
 static void __jconf_redis_server_load(cJSON *entry);
+static void __jconf_subscriber_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -115,6 +115,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_timer_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "redis-server")) {
                 __jconf_redis_server_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "subscriber")) {
+                __jconf_subscriber_load(jcursor);
             } else {
                 ;
             }
@@ -163,17 +165,6 @@ struct jconf_lwp_inner
 static struct list_head g_jlwps_head = { &g_jlwps_head, &g_jlwps_head };
 static unsigned int jlwps_count = 0;
 
-/* load json section "lwps", it contant many of subsection.
- * name of every section indicate the name of user thread and every object have below fields:
- *  1. "module", string, require, specify the module of handler function
- *  2. "execproc", string, require, specify the handler function name
- *  3. "stacksize", integer, option, specify the thread stack size in byts
- *  4. "priority", integer, option, specify the nice value of the thread
- *  5. "contextsize", integer, option, specify the thread context size in bytes
- *  6. "affinity", integer, option, specify the affinity of this thread, using bit or for every CPU ids
- * we load all sub sections in parent section "lwps", create many object for "struct jconf_lwp_inner", and link them to the list "jlwps"
- * meanwhile, we shall increase the count of lwp objects "jlwps_count"
- */
 static void __jconf_lwp_load(cJSON *entry)
 {
     cJSON *jcursor, *jconf_lwp;
@@ -266,6 +257,18 @@ jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *jlwp)
     return iterator;
 }
 
+void jconf_lwp_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_lwp_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jlwps_head) {
+        inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner_lwp);
+        list_del(cursor);
+        zfree(inner);
+    }
+}
+
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        NET IMPLEMENTATIONs        ------------------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
@@ -277,18 +280,6 @@ struct jconf_net_inner
 static struct list_head g_jnets_head = { &g_jnets_head, &g_jnets_head };
 static unsigned int jnets_count = 0;
 
-/* load json section "nets", it contant many of subsection.
- * name of every section indicate the name of user thread and every object have below fields:
- *  1. "module", string, require, specify the module of handler function
- *  2. "acceptproc", string, option, specify the handler function name
- *  3. "recvproc", string, require, specify the handler function name
- *  4. "protocol", string, option, specify the protocol of this socket type
- *  5. "listen", string, option, specify the listen endpoint of this socket
- *  6. "remote", string, option, repel to "listen", specify the remote endpoint which connect or send to
- *  7. "local", string, option, repel to "listen", specify the local endpoint which bind on
- * we load all sub sections in parent section "nets", create many object for "struct jconf_net_inner", and link them to the list "jnets"
- * meanwhile, we shall increase the count of net objects "jnets_count"
- */
 static void __jconf_net_load(cJSON *entry)
 {
     cJSON *jcursor, *jnet;
@@ -395,6 +386,18 @@ jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets)
     return iterator;
 }
 
+void jconf_net_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_net_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jnets_head) {
+        inner = container_of(cursor, struct jconf_net_inner, ele_of_inner_net);
+        list_del(cursor);
+        zfree(inner);
+    }
+}
+
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        TTY IMPLEMENTATIONs        ------------------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
@@ -406,19 +409,6 @@ struct jconf_tty_inner
 static struct list_head g_jtty_head = { &g_jtty_head, &g_jtty_head };
 static unsigned int jtty_count = 0;
 
-/* load json section "tty", it contant many of subsection.
- * name of every section indicate the name of user thread and every object have below fields:
- *  1. "module", string, require, specify the module of handler function
- *  2. "device", string, require, specify the device of this tty which in /dev
- *  3. "recvproc", string, require, specify the handler function name
- *  4. "baudrate", number, require, specify the baudrate of this tty
- *  5. "databits", number, require, specify the databits of this tty, can be 5, 6, 7, 8
- *  6. "stopbits", number, require, specify the stopbits of this tty, can be 1 or 2
- *  7. "parity", string, require, specify the parity of this tty, can be "none", "odd", "even"
- *  8. "flowcontrol", string, require, specify the flowcontrol of this tty, can be "none", "Xon/Xoff", "Rts/Cts", "Dsr/Dtr"
- * we load all sub sections in parent section "tty", create many object for "struct jconf_net_inner", and link them to the list "jtty"
- * meanwhile, we shall increase the count of net objects "jtty_count"
- */
 static void __jconf_tty_load(cJSON *entry)
 {
     cJSON *jcursor, *jtty;
@@ -519,6 +509,18 @@ jconf_iterator_pt jconf_tty_get(jconf_iterator_pt iterator, jconf_tty_pt *jttys)
     return iterator;
 }
 
+void jconf_tty_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_tty_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jtty_head) {
+        inner = container_of(cursor, struct jconf_tty_inner, ele_of_inner_tty);
+        list_del(cursor);
+        zfree(inner);
+    }
+}
+
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        TIMER IMPLEMENTATIONs        ------------------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
@@ -530,19 +532,6 @@ struct jconf_timer_inner
 static struct list_head g_jtimer_head = { &g_jtimer_head, &g_jtimer_head };
 static unsigned int jtimer_count = 0;
 
-/* load json section "timer", it contant many of subsection.
- * name of every section indicate the name of user thread and every object have below fields:
- *  1. "module", string, require, specify the module of handler function
- *  2. "device", string, require, specify the device of this timer which in /dev
- *  3. "recvproc", string, require, specify the handler function name
- *  4. "baudrate", number, require, specify the baudrate of this timer
- *  5. "databits", number, require, specify the databits of this timer, can be 5, 6, 7, 8
- *  6. "stopbits", number, require, specify the stopbits of this timer, can be 1 or 2
- *  7. "parity", string, require, specify the parity of this timer, can be "none", "odd", "even"
- *  8. "flowcontrol", string, require, specify the flowcontrol of this timer, can be "none", "Xon/Xoff", "Rts/Cts", "Dsr/Dtr"
- * we load all sub sections in parent section "timer", create many object for "struct jconf_net_inner", and link them to the list "jtimer"
- * meanwhile, we shall increase the count of net objects "jtimer_count"
- */
 static void __jconf_timer_load(cJSON *entry)
 {
     cJSON *jcursor, *jtimer;
@@ -633,6 +622,18 @@ jconf_iterator_pt jconf_timer_get(jconf_iterator_pt iterator, jconf_timer_pt *jt
     return iterator;
 }
 
+void jconf_timer_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_timer_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jtimer_head) {
+        inner = container_of(cursor, struct jconf_timer_inner, ele_of_inner_timer);
+        list_del(cursor);
+        zfree(inner);
+    }
+}
+
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        REDIS-SERVER IMPLEMENTATIONs        ------------------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
@@ -644,19 +645,6 @@ struct jconf_redis_server_inner
 static struct list_head g_jredis_server_head = { &g_jredis_server_head, &g_jredis_server_head };
 static unsigned int jredis_server_count = 0;
 
-/* load json section "redis_server", it contant many of subsection.
- * name of every section indicate the name of user thread and every object have below fields:
- *  1. "module", string, require, specify the module of handler function
- *  2. "device", string, require, specify the device of this redis_server which in /dev
- *  3. "recvproc", string, require, specify the handler function name
- *  4. "baudrate", number, require, specify the baudrate of this redis_server
- *  5. "databits", number, require, specify the databits of this redis_server, can be 5, 6, 7, 8
- *  6. "stopbits", number, require, specify the stopbits of this redis_server, can be 1 or 2
- *  7. "parity", string, require, specify the parity of this redis_server, can be "none", "odd", "even"
- *  8. "flowcontrol", string, require, specify the flowcontrol of this redis_server, can be "none", "Xon/Xoff", "Rts/Cts", "Dsr/Dtr"
- * we load all sub sections in parent section "redis_server", create many object for "struct jconf_net_inner", and link them to the list "jredis_server"
- * meanwhile, we shall increase the count of net objects "jredis_server_count"
- */
 static void __jconf_redis_server_load(cJSON *entry)
 {
     cJSON *jcursor, *jredis_server;
@@ -737,4 +725,154 @@ jconf_iterator_pt jconf_redis_server_get(jconf_iterator_pt iterator, jconf_redis
     *jredis_servers  = &inner->body;
     iterator->cursor = cursor->next;
     return iterator;
+}
+
+void jconf_redis_server_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_redis_server_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jredis_server_head) {
+        inner = container_of(cursor, struct jconf_redis_server_inner, ele_of_inner_redis_server);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        SUBSCRIBER IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_subscriber_inner
+{
+    struct jconf_subscriber body;
+    struct list_head ele_of_inner_subscriber;
+};
+static struct list_head g_jsubscriber_head = { &g_jsubscriber_head, &g_jsubscriber_head };
+static unsigned int jsubscriber_count = 0;
+
+static void __jconf_subscriber_load(cJSON *entry)
+{
+    cJSON *jcursor, *jsubscriber, *jchannel;
+    struct jconf_subscriber_inner *subscriber;
+    struct jconf_subscriber_channel *channel;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+        if (jcursor->type == cJSON_Object) {
+            subscriber = ztrycalloc(sizeof(*subscriber));
+            if (!subscriber) {
+                break;
+            }
+            INIT_LIST_HEAD(&subscriber->body.head_of_channels);
+            strncpy(subscriber->body.head.name, jcursor->string, sizeof(subscriber->body.head.name) - 1);
+
+            jsubscriber = jcursor->child;
+            while (jsubscriber) {
+                if (jsubscriber->type == cJSON_String) {
+                    if (0 == strcasecmp(jsubscriber->string, "redis-server")) {
+                        strncpy(subscriber->body.redisserver, jsubscriber->valuestring, sizeof(subscriber->body.redisserver) - 1);
+                    } else if (0 == strcasecmp(jsubscriber->string, "execproc")) {
+                        strncpy(subscriber->body.execproc, jsubscriber->valuestring, sizeof(subscriber->body.execproc) - 1);
+                    } else if (0 == strcasecmp(jsubscriber->string, "module")) {
+                        strncpy(subscriber->body.head.module, jsubscriber->valuestring, sizeof(subscriber->body.head.module) - 1);
+                    } else {
+                        ;
+                    }
+                } else if (jsubscriber->type == cJSON_Number) {
+                     if (0 == strcasecmp(jsubscriber->string, "contextsize") || 0 == strcasecmp(jsubscriber->string, "ctxsize")) {
+                        subscriber->body.head.ctxsize = jsubscriber->valueint;
+                    }
+                } else if (jsubscriber->type == cJSON_Array) {
+                    if (0 == strcasecmp(jsubscriber->string, "channels")) {
+                        jchannel = jsubscriber->child;
+                        while (jchannel) {
+                            if (jchannel->type == cJSON_String) {
+                                channel = ztrycalloc(sizeof(*channel));
+                                if (!channel) {
+                                    break;
+                                }
+                                strncpy(channel->pattern, jchannel->valuestring, sizeof(channel->pattern) - 1);
+                                list_add_tail(&channel->ele_of_channels, &subscriber->body.head_of_channels);
+                                subscriber->body.channels_count++;
+                            } else {
+                                ;
+                            }
+
+                            jchannel = jchannel->next;
+                        }
+                    }
+                } else {
+                    ;
+                }
+
+                jsubscriber = jsubscriber->next;
+            }
+
+            list_add_tail(&subscriber->ele_of_inner_subscriber, &g_jsubscriber_head);
+            jsubscriber_count++;
+        }
+
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_subscriber_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jsubscriber_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jsubscriber_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_subscriber_get(jconf_iterator_pt iterator, jconf_subscriber_pt *jsubscribers)
+{
+    struct list_head *cursor;
+    struct jconf_subscriber_inner *inner;
+
+    if (!iterator || !jsubscribers) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jsubscriber_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_subscriber_inner, ele_of_inner_subscriber);
+    *jsubscribers  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_subscriber_free()
+{
+    struct list_head *pos, *n, *pos1, *n1;
+    struct jconf_subscriber_channel *channel;
+    struct jconf_subscriber_inner *i_subscriber;
+
+    list_for_each_safe(pos, n, &g_jsubscriber_head) {
+        i_subscriber = container_of(pos, struct jconf_subscriber_inner, ele_of_inner_subscriber);
+        list_for_each_safe(pos1, n1, &i_subscriber->body.head_of_channels) {
+            channel = container_of(pos1, struct jconf_subscriber_channel, ele_of_channels);
+            list_del_init(pos1);
+            zfree(channel);
+        }
+        list_del_init(pos);
+        zfree(i_subscriber);
+    }
 }

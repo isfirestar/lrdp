@@ -4,22 +4,97 @@
 #include "ttyobj.h"
 #include "timerobj.h"
 #include "redisobj.h"
+#include "subscriberobj.h"
 #include "rand.h"
 #include "monotonic.h"
 #include "ae.h"
+
+static void __lrdp_load_lwp()
+{
+    jconf_lwp_pt jlwpcfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_lwp_get_iterator(&count);
+    while (NULL != (iterator = jconf_lwp_get(iterator, &jlwpcfg))) {
+        lwp_spawn(jlwpcfg);
+    }
+    jconf_lwp_free();
+}
+
+static void __lrdp_load_network()
+{
+    jconf_net_pt jnetcfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_net_get_iterator(&count);
+    while (NULL != (iterator = jconf_net_get(iterator, &jnetcfg))) {
+        netobj_create(jnetcfg);
+    }
+    jconf_net_free();
+}
+
+static void __lrdp_load_tty(aeEventLoop *el)
+{
+    jconf_tty_pt jttycfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+    lobj_pt ttylop;
+
+    iterator = jconf_tty_get_iterator(&count);
+    while (NULL != (iterator = jconf_tty_get(iterator, &jttycfg))) {
+        if (NULL != (ttylop = ttyobj_create(jttycfg))) {
+            ttyobj_add_file(el, ttylop);
+        }
+    }
+    jconf_tty_free();
+}
+
+static void __lrdp_load_timer(aeEventLoop *el)
+{
+    jconf_timer_pt jtimercfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_timer_get_iterator(&count);
+    while (NULL != (iterator = jconf_timer_get(iterator, &jtimercfg))) {
+        timerobj_create(el, jtimercfg);
+    }
+    jconf_timer_free();
+}
+
+static void __lrdp_load_redisserver()
+{
+    jconf_redis_server_pt jredis_server_cfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_redis_server_get_iterator(&count);
+    while (NULL != (iterator = jconf_redis_server_get(iterator, &jredis_server_cfg))) {
+        redisobj_create(jredis_server_cfg);
+    }
+    jconf_redis_server_free();
+}
+
+static void __lrdp_load_subscriber()
+{
+    jconf_subscriber_pt jsubcfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_subscriber_get_iterator(&count);
+    while (NULL != (iterator = jconf_subscriber_get(iterator, &jsubcfg))) {
+        subscriberobj_create(jsubcfg);
+    }
+    jconf_subscriber_free();
+}
 
 int main(int argc, char *argv[])
 {
     nsp_status_t status;
     jconf_entry_pt jentry;
-    jconf_lwp_pt jlwpcfg = NULL;
-    jconf_net_pt jnetcfg = NULL;
-    jconf_tty_pt jttycfg = NULL;
-    jconf_timer_pt jtimercfg = NULL;
-    jconf_redis_server_pt jredis_server_cfg = NULL;
-    jconf_iterator_pt iterator;
-    unsigned int count;
-    lobj_pt mlop, ttylop;
+    lobj_pt mlop;
     aeEventLoop *el;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
@@ -67,36 +142,22 @@ int main(int argc, char *argv[])
     }
 
     /* load and create multi-thread component */
-    iterator = jconf_lwp_get_iterator(&count);
-    while (NULL != (iterator = jconf_lwp_get(iterator, &jlwpcfg))) {
-        lwp_spawn(jlwpcfg);
-    }
+    __lrdp_load_lwp();
 
     /* load and create networking component */
-    iterator = jconf_net_get_iterator(&count);
-    while (NULL != (iterator = jconf_net_get(iterator, &jnetcfg))) {
-        netobj_create(jnetcfg);
-    }
+    __lrdp_load_network();
 
     /* load and create tty component */
-    iterator = jconf_tty_get_iterator(&count);
-    while (NULL != (iterator = jconf_tty_get(iterator, &jttycfg))) {
-        if (NULL != (ttylop = ttyobj_create(jttycfg))) {
-            ttyobj_add_file(el, ttylop);
-        }
-    }
+    __lrdp_load_tty(el);
 
     /* load and create timer */
-    iterator = jconf_timer_get_iterator(&count);
-    while (NULL != (iterator = jconf_timer_get(iterator, &jtimercfg))) {
-        timerobj_create(el, jtimercfg);
-    }
+    __lrdp_load_timer(el);
 
     /* load and create redis server */
-    iterator = jconf_redis_server_get_iterator(&count);
-    while (NULL != (iterator = jconf_redis_server_get(iterator, &jredis_server_cfg))) {
-        redisobj_create(jredis_server_cfg);
-    }
+    __lrdp_load_redisserver();
+
+    /* load and create subscriber object */
+    __lrdp_load_subscriber();
 
     /* post init completed message to entry module */
     mloop_post_init(mlop);

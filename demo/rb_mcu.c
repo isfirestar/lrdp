@@ -11,6 +11,8 @@
 
 int rb_mcu_init(lobj_pt lop, int argc, char **argv)
 {
+    printf("[%d] rb_mcu_init\n", ifos_gettid());
+#if 0
     redisContext *c;
     void *objctx;
     size_t ctxsize;
@@ -38,6 +40,7 @@ int rb_mcu_init(lobj_pt lop, int argc, char **argv)
 
     // save redis connection to mainloop object context
     memcpy(objctx, &c, sizeof(redisContext *));
+#endif
     return 0;
 }
 
@@ -88,7 +91,7 @@ static void __rb_write_uart(lobj_pt lop, float xVelocity)
 
     // if MCU object are correct, we send data to serial port, otherwise, we only print data buffer
     if (lop) {
-         lobj_write(lop, tx_buffer, sizeof(tx_buffer));
+        lobj_write(lop, tx_buffer, sizeof(tx_buffer));
     } else {
         naos_hexdump(tx_buffer, sizeof(tx_buffer), 16, NULL);
     }
@@ -97,6 +100,8 @@ static void __rb_write_uart(lobj_pt lop, float xVelocity)
 static void __rb_set_velocity(float xVelocity)
 {
     lobj_pt lop;
+
+    printf("[%d] __rb_set_velocity %f\n", ifos_gettid(), xVelocity);
 
     // get mcu tty object
     lop = lobj_refer("motionmcu");
@@ -108,6 +113,31 @@ static void __rb_set_velocity(float xVelocity)
     lobj_derefer(lop);
 }
 
+
+/*
+"lwps" : {
+    "updatev" : {
+        "module" : "librbmcu.so",
+        "execproc" : "rb_mcu_on_velocity_update",
+        "stacksize" : 1024,
+        "priority" : 0,
+        "contextsize" : 0,
+        "affinity" : 0
+    }
+},
+*/
+void rb_mcu_on_velocity_update(lobj_pt lop, const char *channel, const char *pattern, const char *message, size_t len)
+{
+    if (pattern && message) {
+        if (0 == strcmp("motion.v_x", pattern)) {
+            __rb_set_velocity(atof(message));
+        } else {
+            printf("pattern missmatch.\n");
+        }
+    }
+}
+
+#if 0
 void *rb_mcu_on_velocity_update(lobj_pt lop)
 {
     void *objctx;
@@ -180,6 +210,7 @@ void *rb_mcu_on_velocity_update(lobj_pt lop)
 
     return NULL;
 }
+#endif
 
 void rb_mcu_on_recvdata(lobj_pt lop, const void *data, unsigned int size)
 {
