@@ -42,6 +42,7 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
         .freeproc = NULL,
         .referproc = NULL,
         .writeproc = NULL,
+        .vwriteproc = NULL,
     };
     struct timerobj *timer;
 

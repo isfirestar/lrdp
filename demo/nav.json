@@ -1,0 +1,23 @@
+{
+    "mainloop" : {
+        "module" : "libnav.so",
+        "preinitproc" : "nav_entry",
+        "contextsize" : 32
+    },
+
+    "redis-server" : {
+        "myrobot" : {
+            "host" : "127.0.0.1:7777",
+            "contextsize" : 0
+        }
+    },
+
+    "timers" : {
+        "entrytimer" : {
+            "module" : "libnav.so",
+            "interval" : 1000,
+            "timerproc" : "nav_update_velocity",
+            "contextsize" : 16
+        }
+    }
+}

@@ -30,7 +30,8 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     struct lobj_fx fx = {
         .freeproc = &__mloop_atexit,
         .referproc = NULL,
-        .writeproc = NULL
+        .vwriteproc = NULL,
+        .writeproc = NULL,
     };
 
     if (!jentry) {

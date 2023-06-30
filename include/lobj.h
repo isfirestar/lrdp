@@ -20,12 +20,14 @@ typedef struct lobj *lobj_pt;
 typedef void (*freeproc_pfn)(struct lobj *lop);
 typedef void (*refer_pfn)(struct lobj *lop);
 typedef int (*write_pfn)(struct lobj *lop, const void *data, size_t n);
+typedef int (*vwrite_pfn)(struct lobj *lop, int elements, const void **vdata, size_t *vsize);
 
 struct lobj_fx
 {
     freeproc_pfn freeproc;
     refer_pfn referproc;
     write_pfn writeproc;
+    vwrite_pfn vwriteproc;
 };
 
 extern nsp_status_t lobj_init();
@@ -38,8 +40,17 @@ extern lobj_pt lobj_refer(const char *name);
 extern lobj_pt lobj_refer_byseq(lobj_seq_t seq);
 extern void lobj_derefer(lobj_pt lop);
 
-/* write data according to the lite object, this IO request will be dispatch to low-level object entity */
+/* write data according to the lite object, this IO request will be dispatch to low-level object entity 
+ * for SOCKET : UDP socket object MUST call @lobj_vwrite instead of @lobj_write and at least 2 elements in @vdata
+ *              the second element in @vdata is a null-terminated string which represent the destination endpoint format like: "253.253.253:65534"
+ *              TCP socket object use @lobj_vwrite are almost the same with @lobj_write, vdata and vsize only use the first element
+ * for REDIS :  layer of vdata are :
+ *              1. asyn callback function with prototype: void (*redisCallbackFn)(struct redisAsyncContext *ac, void *r, void *priveData)
+ *              2. private data(can be NULL)
+ *              [3,n] are the redis command arguments
+ */
 extern int lobj_write(lobj_pt lop, const void *data, size_t n);
+extern int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 
 /* object helper function impls */
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);

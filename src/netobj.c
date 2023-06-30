@@ -203,7 +203,7 @@ static void STDCALL __netobj_tcp_io(const struct nis_event *event, const void *d
     }
 }
 
-void __netobj_free(struct lobj *lop)
+void __netobj_free(lobj_pt lop)
 {
     struct netobj *netp;
 
@@ -217,7 +217,7 @@ void __netobj_free(struct lobj *lop)
     }
 }
 
-int __netobj_write(struct lobj *lop, const void *data, size_t n)
+int __netobj_write(lobj_pt lop, const void *data, size_t n)
 {
     struct netobj *netp;
 
@@ -228,22 +228,51 @@ int __netobj_write(struct lobj *lop, const void *data, size_t n)
 
     if (netp->protocol == JCFG_PROTO_TCP) {
         return tcp_write(netp->link, data, n, NULL);
-    } else if (netp->protocol == JCFG_PROTO_UDP) {
-        ;
-    } else {
-        ;
     }
 
-    return 0;
+    return -1;
+}
+
+int __netobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize )
+{
+    struct netobj *netp;
+    struct endpoint ep;
+    nsp_status_t status;
+
+    if (!lop || !vdata || !vsize || elements <= 0) {
+        return -1;
+    }
+
+    netp = lobj_body(struct netobj *, lop);
+    if (netp->link == INVALID_HTCPLINK) {
+        return -1;
+    }
+
+    if (netp->protocol == JCFG_PROTO_UDP) {
+        if (elements < 2) {
+            return -1;
+        }
+        status = netobj_parse_endpoint((const char *)vdata[1], &ep);
+        if (!NSP_SUCCESS(status)) {
+            return -1;
+        }
+        return udp_write(netp->link, vdata[0], vsize[0], ep.ip, ep.port, NULL);
+    }
+
+    if (netp->protocol == JCFG_PROTO_TCP) {
+        return tcp_write(netp->link, vdata[0], vsize[0], NULL);
+    }
+    return -1;
 }
 
 void netobj_create(const jconf_net_pt jnetcfg)
 {
     lobj_pt lop;
     struct lobj_fx fx = {
-        .freeproc = __netobj_free,
+        .freeproc = &__netobj_free,
         .referproc = NULL,
-        .writeproc = __netobj_write,
+        .writeproc = &__netobj_write,
+        .vwriteproc = &__netobj_vwrite,
     };
     struct netobj *netp;
     nsp_status_t status;

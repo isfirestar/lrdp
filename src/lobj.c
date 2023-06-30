@@ -340,6 +340,19 @@ int lobj_write(lobj_pt lop, const void *data, size_t n)
     return lop->fx.writeproc(lop, data, n);
 }
 
+int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+{
+    if (!lop || !vdata || !vsize) {
+        return posix__makeerror(EINVAL);
+    }
+
+    if (!lop->fx.vwriteproc) {
+        return posix__makeerror(EINVAL);
+    }
+
+    return lop->fx.vwriteproc(lop, elements, vdata, vsize);
+}
+
 /* helper function impls */
 char *lobj_random_name(char *holder, size_t size)
 {

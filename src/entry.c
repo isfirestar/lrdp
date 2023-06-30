@@ -64,7 +64,7 @@ static void __lrdp_load_timer(aeEventLoop *el)
     jconf_timer_free();
 }
 
-static void __lrdp_load_redisserver()
+static void __lrdp_load_redisserver(aeEventLoop *el)
 {
     jconf_redis_server_pt jredis_server_cfg = NULL;
     jconf_iterator_pt iterator;
@@ -72,7 +72,7 @@ static void __lrdp_load_redisserver()
 
     iterator = jconf_redis_server_get_iterator(&count);
     while (NULL != (iterator = jconf_redis_server_get(iterator, &jredis_server_cfg))) {
-        redisobj_create(jredis_server_cfg);
+        redisobj_create(jredis_server_cfg, el);
     }
     jconf_redis_server_free();
 }
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
     __lrdp_load_timer(el);
 
     /* load and create redis server */
-    __lrdp_load_redisserver();
+    __lrdp_load_redisserver(el);
 
     /* load and create subscriber object */
     __lrdp_load_subscriber();

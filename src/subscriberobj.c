@@ -1,11 +1,13 @@
 #include "subscriberobj.h"
 
 #include "redisobj.h"
-#include "threading.h"
 #include "hiredis.h"
+#include "async.h"
 #include "lobj.h"
 #include "zmalloc.h"
 #include "ifos.h"
+
+#include <unistd.h>
 
 struct subscribemsg
 {
@@ -16,74 +18,78 @@ struct subscriberobj
 {
     lobj_pt redislop;
     void (*execproc)(lobj_pt lop, const char *channel, const char *pattern, const char *message, size_t len);
-    lwp_t subscriberbg;
     struct subscribemsg *channel;
     size_t channels;
-    int bg_join;
 };
 
-static void *__subscriberobj_bg(void *parameter)
+static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *priveData)
 {
-    lobj_pt sublop;
+    lobj_pt lop;
+    struct subscriberobj *subobj;
     redisReply *reply;
-    const char **subscribeCmd;
-    size_t *subscribeCmdLen;
+
+    reply = (redisReply *)r;
+    if (!reply) {
+        return;
+    }
+
+    lop = lobj_refer_byseq((lobj_seq_t)priveData);
+    if (!lop) {
+        return;
+    }
+    subobj = lobj_body(struct subscriberobj *, lop);
+
+    if (reply->type == REDIS_REPLY_ARRAY &&
+        reply->elements > 3 && 
+        subobj->execproc &&
+        reply->element[0]->type == REDIS_REPLY_STRING &&
+        reply->element[1]->type == REDIS_REPLY_STRING &&
+        reply->element[2]->type == REDIS_REPLY_STRING &&
+        reply->element[3]->type == REDIS_REPLY_STRING)
+    {
+        subobj->execproc(lop, reply->element[1]->str, reply->element[2]->str, reply->element[3]->str, reply->element[3]->len);
+    }
+    
+    lobj_derefer(lop);
+}
+
+static void __do_subscriberobj(lobj_pt lop)
+{
+    const char **vdata;
+    size_t *vsize;
     struct subscriberobj *subobj;
     unsigned int i;
-    redisContext *c;
+    unsigned int vcount;
 
-    sublop = (lobj_pt)parameter;
-    subobj = lobj_body(struct subscriberobj *, sublop);
-
-    subscribeCmdLen = (size_t *)ztrycalloc(sizeof(size_t) * (subobj->channels + 1));
-    if (!subscribeCmdLen) {
-        printf("[%d] __subscriberobj_bg ztrycalloc subscribeCmdLen error\n", ifos_gettid());
-        return NULL;
-    }
-    subscribeCmd = (const char **)ztrycalloc(sizeof(char *) * (subobj->channels + 1));
-    if (!subscribeCmd) {
+    subobj = lobj_body(struct subscriberobj *, lop);
+    vcount = 2 + 1 + subobj->channels;
+    // (callback + privateData) + PUBLISH + channels
+    vdata = (const char **)ztrycalloc(sizeof(char *) * vcount);
+    if (!vdata) {
         printf("[%d] __subscriberobj_bg ztrycalloc subscribeCmd error\n", ifos_gettid());
-        zfree(subscribeCmdLen);
-        return NULL;
+        return;
+    }
+    vsize = (size_t *)ztrycalloc(sizeof(size_t) * vcount);
+    if (!vsize) {
+        printf("[%d] __subscriberobj_bg ztrycalloc subscribeCmdLen error\n", ifos_gettid());
+        zfree(vdata);
+        return;
     }
 
-    subscribeCmd[0] = "PSUBSCRIBE";
-    subscribeCmdLen[0] = strlen("PSUBSCRIBE");
-    for (i = 1; i < subobj->channels; i++) {
-        subscribeCmd[i] = subobj->channel[i].pattern;
-        subscribeCmdLen[i] = strlen(subobj->channel[i].pattern);
+    vdata[0] = &__redisCallbackFn;
+    vsize[0] = sizeof(void *);
+    vdata[1] = (void *)lobj_get_seq(lop);
+    vsize[1] = sizeof(void *);
+    vdata[2] = "PSUBSCRIBE";
+    vsize[2] = strlen("PSUBSCRIBE");
+    for (i = 0; i < subobj->channels + 1; i++) {
+        vdata[i + 3] = subobj->channel[i].pattern;
+        vsize[i + 3] = strlen(subobj->channel[i].pattern);
     }
 
-    c = redisobj_get_connection(subobj->redislop);
-    redisAppendCommandArgv(c, subobj->channels + 1, subscribeCmd, subscribeCmdLen);
-    while (1) {
-        if (redisGetReply(c, (void **)&reply) != REDIS_OK) {
-            break;
-        }
-        if (!reply) {
-            break;
-        }
-        if (reply->type == REDIS_REPLY_ARRAY) {
-            if (reply->elements > 3 && subobj->execproc) {
-                // if (reply->element[0]->type == REDIS_REPLY_STRING) {
-                //     printf("[%d] redis command: %s\n", ifos_gettid(), reply->element[0]->str);
-                // }
-                // if (reply->element[1]->type == REDIS_REPLY_STRING) {
-                //     printf("[%d] channel: %s\n", ifos_gettid(), reply->element[1]->str);
-                // }
-                // if (reply->element[2]->type == REDIS_REPLY_STRING) {
-                //     if (0 == strcmp("vx", reply->element[2]->str)) {
-                //         __rb_set_velocity(atof(reply->element[3]->str));
-                //     }
-                // }
-                subobj->execproc(sublop, reply->element[1]->str, reply->element[2]->str, reply->element[3]->str, reply->element[3]->len);
-            }
-        }
-        freeReplyObject(reply);
-    }
-
-    lwp_exit(NULL);
-    return NULL;
+    lobj_vwrite(subobj->redislop,  vcount, (const void **)vdata, vsize);
+    zfree(vdata);
+    zfree(vsize);
 }
 
 static void __subscriberobj_free(struct lobj *lop)
@@ -93,10 +99,6 @@ static void __subscriberobj_free(struct lobj *lop)
     if (!lop) {
         return;
     }
-
-    // if (subobj->subscriberbg) {
-    //     lwp_join(subobj->subscriberbg);
-    // }
 
     subobj = lobj_body(struct subscriberobj *, lop);
     if (subobj->channel) {
@@ -116,6 +118,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         .freeproc = &__subscriberobj_free,
         .referproc = NULL,
         .writeproc = NULL,
+        .vwriteproc = NULL,
     };
     struct subscriberobj *subobj;
     unsigned int i;
@@ -139,10 +142,13 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         return;
     }
     subobj->redislop = redislop;
+
+    // load handler procedure
     subobj->execproc = lobj_dlsym(sublop, jsubcfg->execproc);
     if (!subobj->execproc) {
         printf("failed open symbol %s, error : %s\n", jsubcfg->execproc, ifos_dlerror());
     }
+
     // allocate and save channels/patterns
     subobj->channels = jsubcfg->channels_count;
     subobj->channel = (struct subscribemsg *)ztrycalloc(sizeof(struct subscribemsg) * subobj->channels);
@@ -161,10 +167,6 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         ++i;
     }
 
-    // create a thread for subscriber background working
-    if (0 != lwp_create(&subobj->subscriberbg, 0, &__subscriberobj_bg, sublop)) {
-        lobj_ldestroy(sublop);
-        lobj_derefer(redislop);
-        zfree(subobj->channel);
-    }
+    // start subscribe
+    __do_subscriberobj(sublop);
 }

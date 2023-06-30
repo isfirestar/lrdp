@@ -131,6 +131,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         .freeproc = &__ttyobj_on_free,
         .referproc = NULL,
         .writeproc = &__ttyobj_write,
+        .vwriteproc = NULL,
     };
 
     if (!jtty) {

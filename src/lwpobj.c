@@ -47,6 +47,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
         .freeproc = NULL,
         .referproc = NULL,
         .writeproc = NULL,
+        .vwriteproc = NULL,
     };
 
     if (!jlwpcfg) {
