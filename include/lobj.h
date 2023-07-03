@@ -17,10 +17,10 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
-typedef void (*freeproc_pfn)(struct lobj *lop);
-typedef void (*refer_pfn)(struct lobj *lop);
-typedef int (*write_pfn)(struct lobj *lop, const void *data, size_t n);
-typedef int (*vwrite_pfn)(struct lobj *lop, int elements, const void **vdata, size_t *vsize);
+typedef void (*freeproc_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
+typedef void (*refer_pfn)(lobj_pt lop);
+typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
+typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 
 struct lobj_fx
 {
@@ -31,13 +31,18 @@ struct lobj_fx
 };
 
 extern nsp_status_t lobj_init();
+extern void lobj_uninit();
+
+/* proce for create/destroy/destroy_all */
 extern lobj_pt lobj_create(const char *name, const char *module, size_t bodysize, size_t ctxsize, const struct lobj_fx *fx);
 extern lobj_pt lobj_dup(const char *name, const lobj_pt olop);
 extern void lobj_destroy(const char *name);
-extern void lobj_destroy_byseq(lobj_seq_t seq);
+extern void lobj_qdestroy(lobj_seq_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
+
+/* proce for refer/derefer */
 extern lobj_pt lobj_refer(const char *name);
-extern lobj_pt lobj_refer_byseq(lobj_seq_t seq);
+extern lobj_pt lobj_qrefer(lobj_seq_t seq);
 extern void lobj_derefer(lobj_pt lop);
 
 /* write data according to the lite object, this IO request will be dispatch to low-level object entity 
@@ -62,3 +67,4 @@ extern lobj_seq_t lobj_get_seq(lobj_pt lop);
 extern const char *lobj_get_name(lobj_pt lop);
 
 #define lobj_body(type, lop) ((type)lobj_get_body(lop))
+#define lobj_cbody(type, lop) ((const type)lobj_cget_body(lop))

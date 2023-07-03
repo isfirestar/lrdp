@@ -91,7 +91,7 @@ static int __ttyobj_set_baudrate(unsigned int baudrate, struct termios *options)
     return 0;
 }
 
-static void __ttyobj_on_free(struct lobj *lop)
+static void __ttyobj_on_free(struct lobj *lop, void *context, size_t ctxsize)
 {
     struct ttyobj *ttyp;
 

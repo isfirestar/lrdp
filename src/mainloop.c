@@ -13,7 +13,7 @@ struct mainloop
 };
 typedef struct mainloop mainloop_t, *mainloop_pt;
 
-void __mloop_atexit(struct lobj *lop)
+void __mloop_atexit(struct lobj *lop, void *ctx, size_t ctxsize)
 {
     mainloop_pt mloop;
 

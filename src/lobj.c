@@ -83,7 +83,7 @@ static dictType dictSortBySeq = {
     NULL                                        /* val destructor */
 };
 
-static int64_t g_seq = -1;
+static int64_t g_seq = -1000000;
 
 nsp_status_t lobj_init()
 {
@@ -102,7 +102,56 @@ nsp_status_t lobj_init()
     return NSP_STATUS_SUCCESSFUL;
 }
 
-static lobj_pt __lobj_add_dict(lobj_pt lop)
+void __lobj_detach_from_dict(lobj_pt lop) 
+{
+    dictDelete(g_dict_hash_byname, (lop)->name);
+    dictDelete(g_dict_hash_byseq, &((lop)->seq));
+}
+
+static void __lobj_finalize(lobj_pt lop);
+
+// traverse all lobjs and destroy all lobjs which status is LOS_CLOSE_WAIT
+// set any lobj's status to LOS_CLOSE_WAIT means that the lobj is waiting for close and couldn't be referenced
+void lobj_uninit()
+{
+    dictIterator *di;
+    dictEntry *de;
+    lobj_pt lop, *removed;
+    size_t real_removed, i;
+
+    __atomic_store_n(&g_seq, -1000000, __ATOMIC_RELEASE);
+
+    if (!g_dict_hash_byname) {
+        return;
+    }
+
+    removed = (lobj_pt *)ztrycalloc(sizeof(lobj_pt) * dictSize(g_dict_hash_byname));
+    if (!removed) {
+        return;
+    }
+    real_removed = 0;
+
+    acquire_spinlock(&g_lobj_container_locker);
+    di = dictGetIterator(g_dict_hash_byname);
+    while ((de = dictNext(di)) != NULL) {
+        lop = (lobj_pt)dictGetVal(de);
+         if (lop->refcount > 0) {
+            lop->status = LOS_CLOSE_WAIT;
+        } else {
+            __lobj_detach_from_dict(lop);
+            removed[real_removed++] = lop;
+        }
+    }
+    dictReleaseIterator(di);
+    release_spinlock(&g_lobj_container_locker);
+
+    // finalize the removed lobjs
+    for (i = 0; i < real_removed; i++) {
+        __lobj_finalize(removed[i]);
+    }
+}
+
+static lobj_pt __lobj_attach_to_dict(lobj_pt lop)
 {
     int dictResult;
 
@@ -110,7 +159,10 @@ static lobj_pt __lobj_add_dict(lobj_pt lop)
         return NULL;
     }
 
+    dictResult = DICT_ERR;
+
     acquire_spinlock(&g_lobj_container_locker);
+    
     dictResult = dictAdd(g_dict_hash_byname, lop->name, lop);
     if (DICT_OK == dictResult) {
         dictResult = dictAdd(g_dict_hash_byseq, &lop->seq, lop);
@@ -119,6 +171,7 @@ static lobj_pt __lobj_add_dict(lobj_pt lop)
         dictDelete(g_dict_hash_byname, lop->name);
         dictDelete(g_dict_hash_byseq, &lop->seq);
     }
+    
     release_spinlock(&g_lobj_container_locker);
 
     if (DICT_OK != dictResult) {
@@ -134,8 +187,14 @@ static lobj_pt __lobj_add_dict(lobj_pt lop)
 lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx)
 {
     lobj_pt lop;
-    
-    if (!name || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
+    const char *oname;
+    char holder[64];
+    int64_t seq;
+
+    // use g_seq to control module init order
+    seq =  __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
+    if (seq <= 0) {
+        __atomic_sub_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
         return NULL;
     }
 
@@ -144,8 +203,9 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         return NULL;
     }
 
-    lop->seq = __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
-    strncpy(lop->name, name, sizeof(lop->name) - 1);
+    oname = (NULL == name) ? lobj_random_name(holder, sizeof(holder)) : name;
+    lop->seq = seq;
+    strncpy(lop->name, oname, sizeof(lop->name) - 1);
     if (module) {
         strncpy(lop->module, module, sizeof(lop->module) - 1);
         lop->handle = ifos_dlopen(module);
@@ -163,14 +223,23 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
     }
 
-    return __lobj_add_dict(lop);
+    return __lobj_attach_to_dict(lop);
 }
 
 lobj_pt lobj_dup(const char *name, const lobj_pt olop)
 {
     lobj_pt lop;
+    int64_t seq;
+    char holder[64];
 
-    if (!name || !olop || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
+    if (!olop) {
+        return NULL;
+    }
+
+    // use g_seq to control module init order
+    seq =  __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
+    if (seq <= 0) {
+        __atomic_sub_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
         return NULL;
     }
 
@@ -179,8 +248,8 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
         return NULL;
     }
 
-    lop->seq = __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
-    strncpy(lop->name, name, sizeof(lop->name) - 1);
+    lop->seq = seq;
+    strncpy(lop->name, (NULL == name ? lobj_random_name(holder, sizeof(holder)) : name), sizeof(lop->name) - 1);
     strncpy(lop->module, olop->module, sizeof(lop->module) - 1);
     lop->handle = olop->handle;
     lop->size = olop->size;
@@ -191,27 +260,38 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
     lop->ctxsize = olop->ctxsize;
     if (lop->ctxsize > 0) {
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
+        if (!lop->ctx) {
+            lop->ctxsize = 0; // ignore context allocate failure
+        }
     }
 
-    return __lobj_add_dict(lop);
+    return __lobj_attach_to_dict(lop);
 }
 
-static void __lobj_release(lobj_pt lop)
+static void __lobj_finalize(lobj_pt lop)
 {
+    if (!lop) {
+        return;
+    }
+
     if (lop->fx.freeproc) {
-        lop->fx.freeproc(lop);
+        lop->fx.freeproc(lop, lop->ctx, lop->ctxsize);
     }
 
     if (lop->ctx) {
         zfree(lop->ctx);
     }
-
-    acquire_spinlock(&g_lobj_container_locker);
-    dictDelete(g_dict_hash_byname, lop->name);
-    dictDelete(g_dict_hash_byseq, &lop->seq);
-    release_spinlock(&g_lobj_container_locker);
-
     zfree(lop);
+
+    // the dict is on the way of destroying, so we need to check if it is empty
+    if (__atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
+        acquire_spinlock(&g_lobj_container_locker);
+        if (0 == dictSize(g_dict_hash_byname)) {
+            dictRelease(g_dict_hash_byname);
+            g_dict_hash_byname = NULL;
+        }
+        release_spinlock(&g_lobj_container_locker);
+    }
 }
 
 void lobj_destroy(const char *name)
@@ -222,13 +302,23 @@ void lobj_destroy(const char *name)
         return;
     }
 
+    // recycle the object if no reference, otherwise, mark it as close wait
     acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byname, name);
-    lobj_ldestroy(lop);
+    if (lop) {
+        lop->status = LOS_CLOSE_WAIT;
+        if (lop->refcount > 0) {
+            lop = NULL;
+        } else {
+            __lobj_detach_from_dict(lop);
+        }
+    }
     release_spinlock(&g_lobj_container_locker);
+
+     __lobj_finalize(lop);
 }
 
-void lobj_destroy_byseq(int64_t seq)
+void lobj_qdestroy(int64_t seq)
 {
     lobj_pt lop;
 
@@ -238,8 +328,17 @@ void lobj_destroy_byseq(int64_t seq)
 
     acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byseq, &seq);
-    lobj_ldestroy(lop);
+    if (lop) {
+        lop->status = LOS_CLOSE_WAIT;
+        if (lop->refcount > 0) {
+            lop = NULL;
+        } else {
+            __lobj_detach_from_dict(lop);
+        }
+    }
     release_spinlock(&g_lobj_container_locker);
+    
+    __lobj_finalize(lop);
 }
 
 void lobj_ldestroy(lobj_pt lop)
@@ -248,11 +347,16 @@ void lobj_ldestroy(lobj_pt lop)
         return;
     }
 
-    if (__atomic_load_n(&lop->refcount, __ATOMIC_ACQUIRE) > 0) {
-        __atomic_store_n(&lop->status, LOS_CLOSE_WAIT, __ATOMIC_RELEASE);
+    acquire_spinlock(&g_lobj_container_locker);
+    lop->status = LOS_CLOSE_WAIT;
+    if (lop->refcount > 0) {
+        lop = NULL;
     } else {
-        __lobj_release(lop);
+        __lobj_detach_from_dict(lop);
     }
+    release_spinlock(&g_lobj_container_locker);
+    
+    __lobj_finalize(lop);
 }
 
 void *lobj_dlsym(const lobj_pt lop, const char *sym)
@@ -272,16 +376,22 @@ lobj_pt lobj_refer(const char *name)
 {
     lobj_pt lop;
 
-    if (!name || !g_dict_hash_byname) {
+    if (!name || !g_dict_hash_byname || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0 ) {
         return NULL;
     }
 
     acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byname, name);
+    if (lop) {
+        if (LOS_CLOSE_WAIT == lop->status) {
+            lop = NULL;
+         } else {
+            lop->refcount++;
+         } 
+    }
     release_spinlock(&g_lobj_container_locker);
 
     if (lop) {
-        __atomic_add_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST);
         if (lop->fx.referproc) {
             lop->fx.referproc(lop);
         }
@@ -289,20 +399,26 @@ lobj_pt lobj_refer(const char *name)
     return lop;
 }
 
-lobj_pt lobj_refer_byseq(int64_t seq)
+lobj_pt lobj_qrefer(int64_t seq)
 {
     lobj_pt lop;
 
-    if (seq < 0 || !g_dict_hash_byseq) {
+    if (seq < 0 || !g_dict_hash_byseq || __atomic_load_n(&g_seq, __ATOMIC_ACQUIRE) < 0) {
         return NULL;
     }
 
     acquire_spinlock(&g_lobj_container_locker);
     lop = (lobj_pt)dictFetchValue(g_dict_hash_byseq, &seq);
+    if (lop) {
+        if (LOS_CLOSE_WAIT == lop->status) {
+            lop = NULL;
+         } else {
+            lop->refcount++;
+         } 
+    }
     release_spinlock(&g_lobj_container_locker);
 
     if (lop) {
-        __atomic_add_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST);
         if (lop->fx.referproc) {
             lop->fx.referproc(lop);
         }
@@ -312,19 +428,35 @@ lobj_pt lobj_refer_byseq(int64_t seq)
 
 void lobj_derefer(lobj_pt lop)
 {
+    lobj_pt ref;
+
     if (!lop) {
         return;
     }
 
-    if (__atomic_load_n(&lop->refcount, __ATOMIC_ACQUIRE) <= 0) {
-        return;
-    }
+    ref = NULL;
+    acquire_spinlock(&g_lobj_container_locker);
+    do {
+        if (lop->refcount <= 0) {
+            break;
+        }
 
-    if (0 == __atomic_sub_fetch(&lop->refcount, 1, __ATOMIC_SEQ_CST) && 
-        LOS_CLOSE_WAIT == __atomic_load_n(&lop->status, __ATOMIC_ACQUIRE)) 
-    {
-        __lobj_release(lop);
-    }
+        lop->refcount--;
+        if (LOS_CLOSE_WAIT != lop->status) {
+            break;
+        }
+
+        if (lop->refcount > 0) {
+            break;
+        }
+
+        dictDelete(g_dict_hash_byname, lop->name);
+        dictDelete(g_dict_hash_byseq, &lop->seq);
+        ref = lop;
+    } while (0);
+    release_spinlock(&g_lobj_container_locker);
+
+    __lobj_finalize(ref);
 }
 
 int lobj_write(lobj_pt lop, const void *data, size_t n)

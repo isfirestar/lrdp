@@ -71,7 +71,7 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
     lobj_seq_t seq;
 
     nis_cntl(slink, NI_GETCTX, (void **)&sseq);
-    slop = lobj_refer_byseq(sseq);
+    slop = lobj_qrefer(sseq);
     if (!slop) {
         return;
     }
@@ -117,7 +117,7 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
         return;
     }
 
-    lop = lobj_refer_byseq(seq);
+    lop = lobj_qrefer(seq);
     if (!lop) {
         return;
     }
@@ -141,7 +141,7 @@ static void __netobj_tcp_connected(HTCPLINK link)
         return;
     }
 
-    lop = lobj_refer_byseq(seq);
+    lop = lobj_qrefer(seq);
     if (!lop) {
         return;
     }
@@ -165,7 +165,7 @@ static void __netobj_prclose(HTCPLINK link)
         return;
     }
 
-    lop = lobj_refer_byseq(seq);
+    lop = lobj_qrefer(seq);
     if (!lop) {
         return;
     }
@@ -203,7 +203,7 @@ static void STDCALL __netobj_tcp_io(const struct nis_event *event, const void *d
     }
 }
 
-void __netobj_free(lobj_pt lop)
+void __netobj_free(lobj_pt lop, void *context, size_t ctxsize)
 {
     struct netobj *netp;
 

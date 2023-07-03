@@ -144,3 +144,21 @@ typedef struct jconf_subscriber jconf_subscriber_t, *jconf_subscriber_pt;
 extern jconf_iterator_pt jconf_subscriber_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_subscriber_get(jconf_iterator_pt iterator, jconf_subscriber_pt *jsubscriber);
 extern void jconf_subscriber_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        RAWOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_rawobj
+{
+    struct jconf_head head;
+    JCONF_DECLARE_NORMAL_STRING(init);
+    JCONF_DECLARE_NORMAL_STRING(writeproc);
+    JCONF_DECLARE_NORMAL_STRING(vwriteproc);
+    JCONF_DECLARE_NORMAL_STRING(freeproc);
+    JCONF_DECLARE_NORMAL_STRING(referproc);
+};
+typedef struct jconf_rawobj jconf_rawobj_t, *jconf_rawobj_pt;
+
+extern jconf_iterator_pt jconf_rawobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_rawobj_get(jconf_iterator_pt iterator, jconf_rawobj_pt *jrawobj);
+extern void jconf_rawobj_free();

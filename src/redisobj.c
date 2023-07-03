@@ -13,7 +13,7 @@ struct redisobj
     redisAsyncContext *c;
 };
 
-static void __redisobj_free(lobj_pt lop)
+static void __redisobj_free(lobj_pt lop, void *context, size_t ctxsize)
 {
     struct redisobj *rdsobj;
 

@@ -33,7 +33,7 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
         return;
     }
 
-    lop = lobj_refer_byseq((lobj_seq_t)priveData);
+    lop = lobj_qrefer((lobj_seq_t)priveData);
     if (!lop) {
         return;
     }
@@ -76,7 +76,7 @@ static void __do_subscriberobj(lobj_pt lop)
         return;
     }
 
-    vdata[0] = &__redisCallbackFn;
+    vdata[0] = (const char *)&__redisCallbackFn;
     vsize[0] = sizeof(void *);
     vdata[1] = (void *)lobj_get_seq(lop);
     vsize[1] = sizeof(void *);
@@ -92,7 +92,7 @@ static void __do_subscriberobj(lobj_pt lop)
     zfree(vsize);
 }
 
-static void __subscriberobj_free(struct lobj *lop)
+static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize)
 {
     struct subscriberobj *subobj;
 

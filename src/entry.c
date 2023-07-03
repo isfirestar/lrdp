@@ -5,6 +5,7 @@
 #include "timerobj.h"
 #include "redisobj.h"
 #include "subscriberobj.h"
+#include "rawobj.h"
 #include "rand.h"
 #include "monotonic.h"
 #include "ae.h"
@@ -90,6 +91,19 @@ static void __lrdp_load_subscriber()
     jconf_subscriber_free();
 }
 
+static void __lrd_load_raw()
+{
+    jconf_rawobj_pt jrawcfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_rawobj_get_iterator(&count);
+    while (NULL != (iterator = jconf_rawobj_get(iterator, &jrawcfg))) {
+        rawobj_create(jrawcfg);
+    }
+    jconf_rawobj_free();
+}
+
 int main(int argc, char *argv[])
 {
     nsp_status_t status;
@@ -158,6 +172,9 @@ int main(int argc, char *argv[])
 
     /* load and create subscriber object */
     __lrdp_load_subscriber();
+
+    /* load and create raw object */
+    __lrd_load_raw();
 
     /* post init completed message to entry module */
     mloop_post_init(mlop);

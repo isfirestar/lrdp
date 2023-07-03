@@ -55,6 +55,7 @@ static void __jconf_tty_load(cJSON *entry);
 static void __jconf_timer_load(cJSON *entry);
 static void __jconf_redis_server_load(cJSON *entry);
 static void __jconf_subscriber_load(cJSON *entry);
+static void __jconf_rawobj_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -117,6 +118,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_redis_server_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "subscriber")) {
                 __jconf_subscriber_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "utils")) {
+                __jconf_rawobj_load(jcursor);
             } else {
                 ;
             }
@@ -874,5 +877,131 @@ void jconf_subscriber_free()
         }
         list_del_init(pos);
         zfree(i_subscriber);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        RAWOBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_rawobj_inner
+{
+    struct jconf_rawobj body;
+    struct list_head ele_of_inner_rawobj;
+};
+
+static struct list_head g_jrawobj_head = { &g_jrawobj_head, &g_jrawobj_head };
+static unsigned int jrawobj_count = 0;
+
+static void __jconf_rawobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jrawobj;
+    struct jconf_rawobj_inner *rawobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+        if (jcursor->type == cJSON_Object) {
+            rawobj = ztrycalloc(sizeof(*rawobj));
+            if (!rawobj) {
+                break;
+            }
+            strncpy(rawobj->body.head.name, jcursor->string, sizeof(rawobj->body.head.name) - 1);
+
+            // default 4 proce
+            strcpy(rawobj->body.freeproc, "freeproc");
+            strcpy(rawobj->body.referproc, "referproc");
+            strcpy(rawobj->body.vwriteproc, "vwriteproc");
+            strcpy(rawobj->body.writeproc, "writeproc");
+
+            jrawobj = jcursor->child;
+            while (jrawobj) {
+                if (jrawobj->type == cJSON_String) {
+                    if (0 == strcasecmp(jrawobj->string, "module")) {
+                        strncpy(rawobj->body.head.module, jrawobj->valuestring, sizeof(rawobj->body.head.module) - 1);
+                    } else if (0 == strcasecmp(jrawobj->string, "init")) {
+                        strncpy(rawobj->body.init, jrawobj->valuestring, sizeof(rawobj->body.init) - 1);
+                    } else if (0 == strcasecmp(jrawobj->string, "writeproc")) {
+                        strncpy(rawobj->body.writeproc, jrawobj->valuestring, sizeof(rawobj->body.writeproc) - 1);
+                    } else if (0 == strcasecmp(jrawobj->string, "vwriteproc")) {
+                        strncpy(rawobj->body.vwriteproc, jrawobj->valuestring, sizeof(rawobj->body.vwriteproc) - 1);
+                    } else if (0 == strcasecmp(jrawobj->string, "freeproc")) {
+                        strncpy(rawobj->body.freeproc, jrawobj->valuestring, sizeof(rawobj->body.freeproc) - 1);
+                    } else if (0 == strcasecmp(jrawobj->string, "referproc")) {
+                        strncpy(rawobj->body.referproc, jrawobj->valuestring, sizeof(rawobj->body.referproc) - 1);
+                    } else {
+                        ;
+                    }
+                } else if (jrawobj->type == cJSON_Number) {
+                     if (0 == strcasecmp(jrawobj->string, "contextsize") || 0 == strcasecmp(jrawobj->string, "ctxsize")) {
+                        rawobj->body.head.ctxsize = jrawobj->valueint;
+                    } else {
+                        ;
+                    }
+                } else {
+                    ;
+                }
+
+                jrawobj = jrawobj->next;
+            }
+
+            list_add_tail(&rawobj->ele_of_inner_rawobj, &g_jrawobj_head);
+            jrawobj_count++;
+        }
+
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_rawobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jrawobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jrawobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_rawobj_get(jconf_iterator_pt iterator, jconf_rawobj_pt *jrawobjs)
+{
+    struct list_head *cursor;
+    struct jconf_rawobj_inner *inner;
+
+    if (!iterator || !jrawobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jrawobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_rawobj_inner, ele_of_inner_rawobj);
+    *jrawobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_rawobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_rawobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jrawobj_head) {
+        inner = container_of(cursor, struct jconf_rawobj_inner, ele_of_inner_rawobj);
+        list_del_init(cursor);
+        zfree(inner);
     }
 }

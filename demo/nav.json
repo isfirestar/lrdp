@@ -19,5 +19,14 @@
             "timerproc" : "nav_update_velocity",
             "contextsize" : 16
         }
+    },
+
+    "utils" : {
+        "publisher" : {
+            "module" : "libpublisher.so",
+            "writeproc" : "nav_publish_velocity",
+            "vwriteproc" : "nav_publish_any",
+            "contextsize" : 0
+        }
     }
 }
