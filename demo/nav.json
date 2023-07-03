@@ -6,7 +6,12 @@
     },
 
     "redis-server" : {
-        "myrobot" : {
+        "mysub" : {
+            "host" : "127.0.0.1:7777",
+            "contextsize" : 0
+        },
+
+        "mypub" : {
             "host" : "127.0.0.1:7777",
             "contextsize" : 0
         }
@@ -21,7 +26,19 @@
         }
     },
 
-    "utils" : {
+    "subscriber" : {
+        "velocity" : {
+            "redis-server" : "mysub",
+            "module" : "libnav.so",
+            "execproc" : "nav_on_velocity_feedback",
+            "channels" : [
+                "motion.velocity.?*",
+                "motion.v_?"
+            ]
+        }
+    },
+
+    "imports" : {
         "publisher" : {
             "module" : "libpublisher.so",
             "writeproc" : "nav_publish_velocity",

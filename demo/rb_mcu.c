@@ -13,6 +13,27 @@ int rb_mcu_init(lobj_pt lop, int argc, char **argv)
     return 0;
 }
 
+void __rb_publish_velocity_feedback(float vx)
+{
+    lobj_pt publisher;
+    char str_vx[5];
+    const char *vdata[2];
+    size_t vsize[2];
+
+    publisher = lobj_refer("publisher");
+    if (!publisher) {
+        return;
+    }
+
+    vdata[0] = "feedback.v_x";
+    vsize[0] = strlen("feedback.v_x");
+    sprintf(str_vx, "%.02f", vx);
+    vdata[1] = str_vx;
+    vsize[1] = strlen(str_vx);
+    lobj_vwrite(publisher, 2, (const void **)vdata, vsize);
+    lobj_derefer(publisher);
+}
+
 static unsigned char __rb_calculate_mcu_checksum(const unsigned char *origin, unsigned int size)
 {
     unsigned int i;
@@ -35,6 +56,7 @@ static void __rb_write_uart(lobj_pt lop, float xVelocity)
     unsigned char tx_buffer[RB_MCU_PACKAGE_SIZE] = { 0 };
     short vx;
     unsigned char mcu_command;
+    lobj_pt publisher;
 
     vx = 0;
     
@@ -63,6 +85,8 @@ static void __rb_write_uart(lobj_pt lop, float xVelocity)
         lobj_write(lop, tx_buffer, sizeof(tx_buffer));
     } else {
         naos_hexdump(tx_buffer, sizeof(tx_buffer), 16, NULL);
+        // in this case, we using setting velocity as the feedback
+        __rb_publish_velocity_feedback(xVelocity);
     }
 }
 
@@ -73,9 +97,9 @@ static void __rb_set_velocity(float xVelocity)
     printf("[%d] __rb_set_velocity %f\n", ifos_gettid(), xVelocity);
 
     // get mcu tty object
-    lop = lobj_refer("motionmcu");
+    lop = lobj_refer("rb_motion_tty");
     if (!lop) {
-        printf("[%d] __rb_set_velocity motionmcu object is NULL\n", ifos_gettid());
+        printf("[%d] __rb_set_velocity rb_motion_tty object is NULL\n", ifos_gettid());
     }
 
     __rb_write_uart(lop, xVelocity);

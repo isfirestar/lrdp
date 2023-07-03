@@ -27,3 +27,14 @@ void nav_update_velocity(lobj_pt lop)
     lobj_write(publisher, velocity[redisLrand48() % 5], 4);
     lobj_derefer(publisher);
 }
+
+void nav_on_velocity_feedback(lobj_pt lop, const char *channel, const char *pattern, const char *message, size_t len)
+{
+    if (pattern && message) {
+        if (0 == strcmp("motion.v_x", pattern)) {
+            printf("feedback velocity:%s\n", message);
+        } else {
+            printf("pattern missmatch.\n");
+        }
+    }
+}

@@ -118,7 +118,7 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_redis_server_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "subscriber")) {
                 __jconf_subscriber_load(jcursor);
-            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "utils")) {
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "imports")) {
                 __jconf_rawobj_load(jcursor);
             } else {
                 ;

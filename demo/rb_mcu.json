@@ -6,7 +6,7 @@
     },
 
     "ttys" : {
-        "motionmcu" : {
+        "rb_motion_tty" : {
             "module" : "librbmcu.so",
             "device" : "/dev/uart1",
             "baudrate" : 38400,
@@ -20,7 +20,12 @@
     },
 
     "redis-server" : {
-        "myrobot" : {
+        "mysub" : {
+            "host" : "127.0.0.1:7777",
+            "contextsize" : 0
+        },
+
+        "mypub" : {
             "host" : "127.0.0.1:7777",
             "contextsize" : 0
         }
@@ -28,13 +33,22 @@
 
     "subscriber" : {
         "velocity" : {
-            "redis-server" : "myrobot",
+            "redis-server" : "mysub",
             "module" : "librbmcu.so",
             "execproc" : "rb_mcu_on_velocity_update",
             "channels" : [
                 "motion.velocity.?*",
                 "motion.v_?"
             ]
+        }
+    },
+
+    "imports" : {
+        "publisher" : {
+            "module" : "libpublisher.so",
+            "writeproc" : "nav_publish_velocity",
+            "vwriteproc" : "nav_publish_any",
+            "contextsize" : 0
         }
     }
 }
