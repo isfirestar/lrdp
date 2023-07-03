@@ -1,13 +1,13 @@
 {
     "mainloop" : {
-        "module" : "librbmcu.so",
+        "module" : "/mnt/d/git/my/lrdp/gmake/librbmcu.so",
         "preinitproc" : "rb_mcu_init",
         "contextsize" : 32
     },
 
     "ttys" : {
         "rb_motion_tty" : {
-            "module" : "librbmcu.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/librbmcu.so",
             "device" : "/dev/uart1",
             "baudrate" : 38400,
             "databits" : 8,
@@ -34,7 +34,7 @@
     "subscriber" : {
         "velocity" : {
             "redis-server" : "mysub",
-            "module" : "librbmcu.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/librbmcu.so",
             "execproc" : "rb_mcu_on_velocity_update",
             "channels" : [
                 "motion.velocity.?*",
@@ -45,7 +45,7 @@
 
     "imports" : {
         "publisher" : {
-            "module" : "libpublisher.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libpublisher.so",
             "writeproc" : "nav_publish_velocity",
             "vwriteproc" : "nav_publish_any",
             "contextsize" : 0

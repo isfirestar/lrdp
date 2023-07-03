@@ -1,6 +1,6 @@
 {
     "mainloop" : {
-        "module" : "libnav.so",
+        "module" : "/mnt/d/git/my/lrdp/gmake/libnav.so",
         "preinitproc" : "nav_entry",
         "contextsize" : 32
     },
@@ -19,8 +19,8 @@
 
     "timers" : {
         "nav_traject_control" : {
-            "module" : "libnav.so",
-            "interval" : 1000,
+            "module" : "/mnt/d/git/my/lrdp/gmake/libnav.so",
+            "interval" : 20,
             "timerproc" : "nav_traject_control",
             "contextsize" : 40
         }
@@ -29,18 +29,28 @@
     "subscriber" : {
         "velocity" : {
             "redis-server" : "mysub",
-            "module" : "libnav.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libnav.so",
             "execproc" : "nav_on_velocity_feedback",
             "channels" : [
                 "feedback.velocity.?*",
                 "feedback.v_?"
+            ]
+        },
+
+        "motion_task" : {
+            "redis-server" : "mysub",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libnav.so",
+            "execproc" : "nav_on_motion_task",
+            "channels" : [
+                "motion.pos.?*",
+                "motion.pos_?"
             ]
         }
     },
 
     "imports" : {
         "publisher" : {
-            "module" : "libpublisher.so",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libpublisher.so",
             "writeproc" : "nav_publish_velocity",
             "vwriteproc" : "nav_publish_any",
             "contextsize" : 0
