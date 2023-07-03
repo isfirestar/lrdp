@@ -18,11 +18,11 @@
     },
 
     "timers" : {
-        "entrytimer" : {
+        "nav_traject_control" : {
             "module" : "libnav.so",
             "interval" : 1000,
-            "timerproc" : "nav_update_velocity",
-            "contextsize" : 16
+            "timerproc" : "nav_traject_control",
+            "contextsize" : 40
         }
     },
 
@@ -32,8 +32,8 @@
             "module" : "libnav.so",
             "execproc" : "nav_on_velocity_feedback",
             "channels" : [
-                "motion.velocity.?*",
-                "motion.v_?"
+                "feedback.velocity.?*",
+                "feedback.v_?"
             ]
         }
     },

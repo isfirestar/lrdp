@@ -121,4 +121,7 @@ void rb_mcu_on_recvdata(lobj_pt lop, const void *data, unsigned int size)
 {
     printf("recv incoming mcu data:\n");
     naos_hexdump(data, size, 16, NULL);
+    if (data[1] == 0xe4) {
+        __rb_publish_velocity_feedback(*(float *)&data[2]);
+    }
 }
