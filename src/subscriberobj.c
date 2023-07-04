@@ -40,7 +40,7 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
     subobj = lobj_body(struct subscriberobj *, lop);
 
     if (reply->type == REDIS_REPLY_ARRAY &&
-        reply->elements > 3 && 
+        reply->elements > 3 &&
         subobj->execproc &&
         reply->element[0]->type == REDIS_REPLY_STRING &&
         reply->element[1]->type == REDIS_REPLY_STRING &&
@@ -49,7 +49,7 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
     {
         subobj->execproc(lop, reply->element[1]->str, reply->element[2]->str, reply->element[3]->str, reply->element[3]->len);
     }
-    
+
     lobj_derefer(lop);
 }
 
@@ -116,9 +116,10 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     lobj_pt redislop, sublop;
     static const struct lobj_fx fx = {
         .freeproc = &__subscriberobj_free,
-        .referproc = NULL,
         .writeproc = NULL,
         .vwriteproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
     struct subscriberobj *subobj;
     unsigned int i;
@@ -134,6 +135,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         return;
     }
     subobj = lobj_body(struct subscriberobj *, sublop);
+    lobj_cover_fx(sublop, NULL, jsubcfg->head.writeproc, jsubcfg->head.vwriteproc, jsubcfg->head.readproc, jsubcfg->head.vreadproc);
 
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created

@@ -14,7 +14,7 @@
             "stopbits" : 1,
             "parity" : "none",
             "flowcontrol" : "none",
-            "recvproc" : "rb_mcu_on_recvdata",
+            "readproc" : "rb_mcu_on_recvdata",
             "contextsize" : 0
         }
     },

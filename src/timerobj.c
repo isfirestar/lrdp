@@ -4,7 +4,7 @@
 
 struct timerobj
 {
-    void (*timerproc)(lobj_pt lop, void *arg);
+    void (*timerproc)(lobj_pt lop);
     unsigned int interval;
     long long evnid;
     aeEventLoop *el;
@@ -19,7 +19,7 @@ static int __timerobj_proc(struct aeEventLoop *eventLoop, long long id, void *cl
     timer = lobj_body(struct timerobj *, lop);
 
     if (timer->timerproc) {
-        timer->timerproc(lop, NULL);
+        timer->timerproc(lop);
     }
 
     return timer->interval;
@@ -40,9 +40,10 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
     lobj_pt lop;
     struct lobj_fx fx = {
         .freeproc = NULL,
-        .referproc = NULL,
         .writeproc = NULL,
         .vwriteproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
     struct timerobj *timer;
 
@@ -51,6 +52,7 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
         return;
     }
     timer = lobj_body(struct timerobj *, lop);
+    lobj_cover_fx(lop, jtimer->head.freeproc, jtimer->head.writeproc, jtimer->head.vwriteproc, jtimer->head.readproc, jtimer->head.vreadproc);
     timer->el = el;
     timer->timerproc = lobj_dlsym(lop, jtimer->timerproc);
     timer->interval = jtimer->interval;

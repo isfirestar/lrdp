@@ -31,6 +31,15 @@
             "priority" : 0,
             "contextsize" : 128,
             "affinity" : 0
+        },
+
+        "debuger" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "readproc" : "dep_debuger",
+            "stacksize" : 1024,
+            "priority" : 0,
+            "contextsize" : 128,
+            "affinity" : 0
         }
     },
 
@@ -40,8 +49,8 @@
             "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
             "listen" : "0.0.0.0:10256",
             "acceptproc" : "dep_tcp_on_accept",
-            "recvproc" : "dep_tcp_on_received",
-            "closeproc" : "dep_tcp_on_closed",
+            "freeproc" : "dep_tcp_on_closed",
+            "readproc" : "dep_tcp_on_received",
             "contextsize" : 16
         },
 
@@ -51,21 +60,8 @@
             "local" : "0.0.0.0:10255",
             "remote" : "127.0.0.1:10256",
             "connectproc" : "dep_tcp_on_connected",
-            "recvproc" : "dep_tcp_on_received",
-            "closeproc" : "dep_tcp_on_closed"
-        }
-    },
-
-    "ttys" : {
-        "motionmcu" : {
-            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
-            "device" : "/dev/uart1",
-            "baudrate" : 38400,
-            "databits" : 8,
-            "stopbits" : 1,
-            "parity" : "none",
-            "flowcontrol" : "none",
-            "recvproc" : "dep_ser_on_received",
+            "freeproc" : "dep_tcp_on_closed",
+            "readproc" : "dep_tcp_on_received",
             "contextsize" : 0
         }
     }

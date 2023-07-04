@@ -51,7 +51,7 @@ static unsigned char __rb_calculate_mcu_checksum(const unsigned char *origin, un
     return checksum;
 }
 
-static void __rb_write_uart(lobj_pt lop, float vx)
+static void __rb_write_uart(lobj_pt lop, float fxv)
 {
     unsigned char tx_buffer[RB_MCU_PACKAGE_SIZE] = { 0 };
     short vx;
@@ -65,7 +65,7 @@ static void __rb_write_uart(lobj_pt lop, float vx)
         vx = 0;
     } else {
         mcu_command = SET_KEY_XY_CMD;
-        vx = vx * 1000;
+        vx = fxv * 1000;
     }
 
     if (vx < 0) {
@@ -86,7 +86,7 @@ static void __rb_write_uart(lobj_pt lop, float vx)
     } else {
         naos_hexdump(tx_buffer, sizeof(tx_buffer), 16, NULL);
         // in this case, we using setting velocity as the feedback
-        __rb_publish_velocity_feedback(vx);
+        __rb_publish_velocity_feedback(fxv);
     }
 }
 
@@ -117,7 +117,7 @@ void rb_mcu_on_velocity_update(lobj_pt lop, const char *channel, const char *pat
     }
 }
 
-void rb_mcu_on_recvdata(lobj_pt lop, const void *data, unsigned int size)
+void rb_mcu_on_recvdata(lobj_pt lop, void *data, unsigned int size)
 {
     printf("recv incoming mcu data:\n");
     naos_hexdump(data, size, 16, NULL);

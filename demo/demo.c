@@ -84,7 +84,7 @@ void *dep_bg_exec(lobj_pt lop)
     return NULL;
 }
 
-void dep_tcp_on_received(lobj_pt lop, const void *data, unsigned int size)
+void dep_tcp_on_received(lobj_pt lop, void *data, size_t size)
 {
     char *p;
 

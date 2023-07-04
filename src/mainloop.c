@@ -9,18 +9,12 @@ struct mainloop
 {
     int (*preinitproc)(lobj_pt lop, int argc, char **argv);
     void (*postinitproc)(lobj_pt lop);
-    void (*exitproc)(lobj_pt lop);
 };
 typedef struct mainloop mainloop_t, *mainloop_pt;
 
 void __mloop_atexit(struct lobj *lop, void *ctx, size_t ctxsize)
 {
-    mainloop_pt mloop;
-
-    mloop = lobj_body(mainloop_pt, lop);
-    if (mloop->exitproc) {
-        mloop->exitproc(lop);
-    }
+    lobj_fx_free(lop);
 }
 
 lobj_pt mloop_create(const jconf_entry_pt jentry)
@@ -29,9 +23,10 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     mainloop_pt mloop;
     struct lobj_fx fx = {
         .freeproc = &__mloop_atexit,
-        .referproc = NULL,
         .vwriteproc = NULL,
         .writeproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
 
     if (!jentry) {
@@ -43,12 +38,12 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
         return NULL;
     }
     mloop = lobj_body(mainloop_pt, lop);
+    // freeproc cannot be covered
+    lobj_cover_fx(lop, NULL, jentry->head.vwriteproc, jentry->head.writeproc, jentry->head.readproc, jentry->head.vreadproc);
 
     // load all entry procedure which defined in json configure file, ignore failed
     mloop->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
     mloop->postinitproc = lobj_dlsym(lop, jentry->postinitproc);
-    mloop->exitproc = lobj_dlsym(lop, jentry->exitproc);
-
     return lop;
 }
 

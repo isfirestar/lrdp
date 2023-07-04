@@ -3,8 +3,47 @@
 #include "zmalloc.h"
 #include "cjson.h"
 
-static struct jconf_entry jentry = { .preinitproc = { 0 }, .postinitproc = { 0 }, .exitproc = { 0 },
+static struct jconf_entry jentry = { .preinitproc = { 0 }, .postinitproc = { 0 },
     .head = { .ctxsize = 0, .module = { 0 }, .name = { 0 } } };
+
+static cJSON *__jconf_load_head(cJSON *jcursor, struct jconf_head *cfhead)
+{
+    cJSON *jnext;
+
+    if (!jcursor || !cfhead) {
+        return NULL;
+    }
+
+    if (jcursor->type != cJSON_Object) {
+        return NULL;
+    }
+
+    strncpy(cfhead->name, jcursor->string, sizeof(cfhead->name) - 1);
+    jnext = jcursor->child;
+
+    while (jnext) {
+        if (0 == strcasecmp(jnext->string, "module") && jnext->type == cJSON_String) {
+            strncpy(cfhead->module, jnext->valuestring, sizeof(cfhead->module) - 1);
+        } else if (0 == strcasecmp(jnext->string, "freeproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->freeproc, jnext->valuestring, sizeof(cfhead->freeproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "readproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->readproc, jnext->valuestring, sizeof(cfhead->readproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "vreadproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->vreadproc, jnext->valuestring, sizeof(cfhead->vreadproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "writeproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->writeproc, jnext->valuestring, sizeof(cfhead->writeproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "vwriteproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->vwriteproc, jnext->valuestring, sizeof(cfhead->vwriteproc) - 1);
+        } else if ( (0 == strcasecmp(jnext->string, "ctxsize") || 0 == strcasecmp(jnext->string, "contextsize") ) && jnext->type == cJSON_Number) {
+            cfhead->ctxsize = jnext->valueint;
+        } else {
+            ;
+        }
+        jnext = jnext->next;
+    }
+
+    return jcursor->child;
+}
 
 /* see demo/demo.json
  * "entry" section have 3 validate sub sections, their are:
@@ -16,28 +55,15 @@ static void __jconf_entry_load(cJSON *entry)
 {
     cJSON *jcursor;
 
-    jcursor = entry->child;
+    jcursor = __jconf_load_head(entry, &jentry.head);
     while (jcursor) {
         if (jcursor->type == cJSON_String) {
-            if (0 == strcasecmp(jcursor->string, "module")) {
-                strncpy(jentry.head.module, jcursor->valuestring, sizeof(jentry.head.module) - 1);
-            } else if (0 == strcasecmp(jcursor->string, "preinitproc")) {
+            if (0 == strcasecmp(jcursor->string, "preinitproc")) {
                 strncpy(jentry.preinitproc, jcursor->valuestring, sizeof(jentry.preinitproc) - 1);
             } else if (0 == strcasecmp(jcursor->string, "postinitproc")) {
                 strncpy(jentry.postinitproc, jcursor->valuestring, sizeof(jentry.postinitproc) - 1);
-            } else if (0 == strcasecmp(jcursor->string, "exitproc")) {
-                strncpy(jentry.exitproc, jcursor->valuestring, sizeof(jentry.exitproc) - 1);
-            } else {
-                ;
             }
         }
-
-        if (jcursor->type == cJSON_Number) {
-             if (0 == strcasecmp(jcursor->string, "contextsize") || 0 == strcasecmp(jcursor->string, "ctxsize")) {
-                jentry.head.ctxsize = jcursor->valueint;
-            }
-        }
-
         jcursor = jcursor->next;
     }
 
@@ -162,7 +188,7 @@ void jconf_release_iterator(jconf_iterator_pt iterator)
 struct jconf_lwp_inner
 {
     struct jconf_lwp body;
-    struct list_head ele_of_inner_lwp;
+    struct list_head ele_of_inner;
 };
 
 static struct list_head g_jlwps_head = { &g_jlwps_head, &g_jlwps_head };
@@ -170,50 +196,40 @@ static unsigned int jlwps_count = 0;
 
 static void __jconf_lwp_load(cJSON *entry)
 {
-    cJSON *jcursor, *jconf_lwp;
+    cJSON *jcursor, *jnext;
     struct jconf_lwp_inner *lwp;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            lwp = ztrymalloc(sizeof(*lwp));
-            if (!lwp) {
-                break;
-            }
-
-            memset(lwp, 0, sizeof(*lwp));
-            strncpy(lwp->body.head.name, jcursor->string, sizeof(lwp->body.head.name) - 1);
-
-            jconf_lwp = jcursor->child;
-            while (jconf_lwp) {
-                if (jconf_lwp->type == cJSON_String) {
-                    if (0 == strcasecmp(jconf_lwp->string, "module")) {
-                        strncpy(lwp->body.head.module, jconf_lwp->valuestring, sizeof(lwp->body.module) - 1);
-                    } else if (0 == strcasecmp(jconf_lwp->string, "execproc")) {
-                        strncpy(lwp->body.execproc, jconf_lwp->valuestring, sizeof(lwp->body.execproc) - 1);
-                    } else {
-                        ;
-                    }
-                } else if (jconf_lwp->type == cJSON_Number) {
-                    if (0 == strcasecmp(jconf_lwp->string, "stacksize")) {
-                        lwp->body.stacksize = jconf_lwp->valueint;
-                    } else if (0 == strcasecmp(jconf_lwp->string, "priority")) {
-                        lwp->body.priority = jconf_lwp->valueint;
-                    } else if (0 == strcasecmp(jconf_lwp->string, "contextsize") || 0 == strcasecmp(jconf_lwp->string, "ctxsize")) {
-                        lwp->body.head.ctxsize = jconf_lwp->valueint;
-                    } else if (0 == strcasecmp(jconf_lwp->string, "affinity")) {
-                        lwp->body.affinity = jconf_lwp->valueint;
-                    } else {
-                        ;
-                    }
-                }
-                jconf_lwp = jconf_lwp->next;
-            }
-
-            list_add_tail(&lwp->ele_of_inner_lwp, &g_jlwps_head);
-            jlwps_count++;
+        lwp = ztrycalloc(sizeof(*lwp));
+        if (!lwp) {
+            break;
         }
+
+        jnext = __jconf_load_head(jcursor, &lwp->body.head);
+        if (!jnext) {
+            zfree(lwp);
+            break;
+        }
+
+        do {
+            if (jnext->type == cJSON_String) {
+                if (0 == strcasecmp(jnext->string, "execproc")) {
+                    strncpy(lwp->body.execproc, jnext->valuestring, sizeof(lwp->body.execproc) - 1);
+                }
+            } else if (jnext->type == cJSON_Number) {
+                if (0 == strcasecmp(jnext->string, "priority")) {
+                    lwp->body.priority = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "affinity")) {
+                    lwp->body.affinity = jnext->valueint;
+                }
+            }
+            jnext = jnext->next;
+        } while (jnext);
+
+        list_add_tail(&lwp->ele_of_inner, &g_jlwps_head);
+        jlwps_count++;
         jcursor = jcursor->next;
     }
 }
@@ -254,7 +270,7 @@ jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *jlwp)
         return NULL;
     }
 
-    inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner_lwp);
+    inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner);
     *jlwp  = &inner->body;
     iterator->cursor = cursor->next;
     return iterator;
@@ -266,7 +282,7 @@ void jconf_lwp_free()
     struct jconf_lwp_inner *inner;
 
     list_for_each_safe(cursor, next, &g_jlwps_head) {
-        inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner_lwp);
+        inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner);
         list_del(cursor);
         zfree(inner);
     }
@@ -278,71 +294,57 @@ void jconf_lwp_free()
 struct jconf_net_inner
 {
     struct jconf_net body;
-    struct list_head ele_of_inner_net;
+    struct list_head ele_of_inner;
 };
 static struct list_head g_jnets_head = { &g_jnets_head, &g_jnets_head };
 static unsigned int jnets_count = 0;
 
 static void __jconf_net_load(cJSON *entry)
 {
-    cJSON *jcursor, *jnet;
+    cJSON *jcursor, *jnext;
     struct jconf_net_inner *net;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            net = ztrycalloc(sizeof(*net));
-            if (!net) {
-                break;
-            }
-            strncpy(net->body.head.name, jcursor->string, sizeof(net->body.head.name) - 1);
-
-            jnet = jcursor->child;
-            while (jnet) {
-                if (jnet->type == cJSON_String) {
-                    if (0 == strcasecmp(jnet->string, "module")) {
-                        strncpy(net->body.head.module, jnet->valuestring, sizeof(net->body.head.module) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "acceptproc")) {
-                        strncpy(net->body.acceptproc, jnet->valuestring, sizeof(net->body.acceptproc) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "recvproc")) {
-                        strncpy(net->body.recvproc, jnet->valuestring, sizeof(net->body.recvproc) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "closeproc")) {
-                        strncpy(net->body.closeproc, jnet->valuestring, sizeof(net->body.closeproc) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "connectproc")) {
-                        strncpy(net->body.connectproc, jnet->valuestring, sizeof(net->body.connectproc) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "listen")) {
-                        strncpy(net->body.listen, jnet->valuestring, sizeof(net->body.listen) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "remote")) {
-                        strncpy(net->body.remote, jnet->valuestring, sizeof(net->body.remote) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "local")) {
-                        strncpy(net->body.local, jnet->valuestring, sizeof(net->body.local) - 1);
-                    } else if (0 == strcasecmp(jnet->string, "protocol")) {
-                        if (0 == strcasecmp(jnet->valuestring, "tcp")) {
-                            net->body.protocol = JCFG_PROTO_TCP;
-                        } else if (0 == strcasecmp(jnet->valuestring, "udp")) {
-                            net->body.protocol = JCFG_PROTO_UDP;
-                        } else {
-                            net->body.protocol = JCFG_PROTO_ERR;
-                        }
-                    } else {
-                        ;
-                    }
-                } else if (jnet->type == cJSON_Number) {
-                    if (0 == strcasecmp(jcursor->string, "contextsize") || 0 == strcasecmp(jcursor->string, "ctxsize")) {
-                        net->body.head.ctxsize = jcursor->valueint;
-                    } else {
-                        ;
-                    }
-                } else {
-                    ;
-                }
-                jnet = jnet->next;
-            }
-
-            list_add_tail(&net->ele_of_inner_net, &g_jnets_head);
-            jnets_count++;
+        net = ztrycalloc(sizeof(*net));
+        if (!net) {
+            break;
         }
+
+        jnext = __jconf_load_head(jcursor, &net->body.head);
+        if (!jnext) {
+            zfree(net);
+            break;
+        }
+
+        do {
+            if (jnext->type == cJSON_String) {
+                if (0 == strcasecmp(jnext->string, "acceptproc")) {
+                    strncpy(net->body.acceptproc, jnext->valuestring, sizeof(net->body.acceptproc) - 1);
+                } else if (0 == strcasecmp(jnext->string, "connectproc")) {
+                    strncpy(net->body.connectproc, jnext->valuestring, sizeof(net->body.connectproc) - 1);
+                } else if (0 == strcasecmp(jnext->string, "listen")) {
+                    strncpy(net->body.listen, jnext->valuestring, sizeof(net->body.listen) - 1);
+                } else if (0 == strcasecmp(jnext->string, "remote")) {
+                    strncpy(net->body.remote, jnext->valuestring, sizeof(net->body.remote) - 1);
+                } else if (0 == strcasecmp(jnext->string, "local")) {
+                    strncpy(net->body.local, jnext->valuestring, sizeof(net->body.local) - 1);
+                } else if (0 == strcasecmp(jnext->string, "protocol")) {
+                    if (0 == strcasecmp(jnext->valuestring, "tcp")) {
+                        net->body.protocol = JCFG_PROTO_TCP;
+                    } else if (0 == strcasecmp(jnext->valuestring, "udp")) {
+                        net->body.protocol = JCFG_PROTO_UDP;
+                    } else {
+                        net->body.protocol = JCFG_PROTO_ERR;
+                    }
+                }
+            }
+            jnext = jnext->next;
+        } while (jnext);
+
+        list_add_tail(&net->ele_of_inner, &g_jnets_head);
+        jnets_count++;
         jcursor = jcursor->next;
     }
 }
@@ -383,7 +385,7 @@ jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets)
         return NULL;
     }
 
-    inner = container_of(cursor, struct jconf_net_inner, ele_of_inner_net);
+    inner = container_of(cursor, struct jconf_net_inner, ele_of_inner);
     *jnets  = &inner->body;
     iterator->cursor = cursor->next;
     return iterator;
@@ -395,7 +397,7 @@ void jconf_net_free()
     struct jconf_net_inner *inner;
 
     list_for_each_safe(cursor, next, &g_jnets_head) {
-        inner = container_of(cursor, struct jconf_net_inner, ele_of_inner_net);
+        inner = container_of(cursor, struct jconf_net_inner, ele_of_inner);
         list_del(cursor);
         zfree(inner);
     }
@@ -414,58 +416,47 @@ static unsigned int jtty_count = 0;
 
 static void __jconf_tty_load(cJSON *entry)
 {
-    cJSON *jcursor, *jtty;
+    cJSON *jcursor, *jnext;
     struct jconf_tty_inner *tty;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            tty = ztrycalloc(sizeof(*tty));
-            if (!tty) {
-                break;
-            }
-            strncpy(tty->body.head.name, jcursor->string, sizeof(tty->body.name) - 1);
-
-            jtty = jcursor->child;
-            while (jtty) {
-                if (jtty->type == cJSON_String) {
-                    if (0 == strcasecmp(jtty->string, "module")) {
-                        strncpy(tty->body.head.module, jtty->valuestring, sizeof(tty->body.module) - 1);
-                    } else if (0 == strcasecmp(jtty->string, "device")) {
-                        strncpy(tty->body.device, jtty->valuestring, sizeof(tty->body.device) - 1);
-                    } else if (0 == strcasecmp(jtty->string, "recvproc")) {
-                        strncpy(tty->body.recvproc, jtty->valuestring, sizeof(tty->body.recvproc) - 1);
-                    } else if (0 == strcasecmp(jtty->string, "parity")) {
-                        strncpy(tty->body.parity, jtty->valuestring, sizeof(tty->body.parity) - 1);
-                    } else if (0 == strcasecmp(jtty->string, "flowcontrol")) {
-                        strncpy(tty->body.flowcontrol, jtty->valuestring, sizeof(tty->body.flowcontrol) - 1);
-                    } else {
-                        ;
-                    }
-                } else if (jtty->type == cJSON_Number) {
-                    if (0 == strcasecmp(jtty->string, "baudrate")) {
-                        tty->body.baudrate = jtty->valueint;
-                    } else if (0 == strcasecmp(jtty->string, "databits")) {
-                        tty->body.databits = jtty->valueint;
-                    } else if (0 == strcasecmp(jtty->string, "stopbits")) {
-                        tty->body.stopbits = jtty->valueint;
-                    } else if (0 == strcasecmp(jtty->string, "contextsize") || 0 == strcasecmp(jtty->string, "ctxsize")) {
-                        tty->body.head.ctxsize = jtty->valueint;
-                    } else {
-                        ;
-                    }
-                } else {
-                    ;
-                }
-
-                jtty = jtty->next;
-            }
-
-            list_add_tail(&tty->ele_of_inner_tty, &g_jtty_head);
-            jtty_count++;
+        tty = ztrycalloc(sizeof(*tty));
+        if (!tty) {
+            break;
         }
 
+        jnext = __jconf_load_head(jcursor, &tty->body.head);
+        if (!jnext) {
+            zfree(tty);
+            break;
+        }
+
+        do {
+            if (jnext->type == cJSON_String) {
+                if (0 == strcasecmp(jnext->string, "device")) {
+                    strncpy(tty->body.device, jnext->valuestring, sizeof(tty->body.device) - 1);
+                } else if (0 == strcasecmp(jnext->string, "parity")) {
+                    strncpy(tty->body.parity, jnext->valuestring, sizeof(tty->body.parity) - 1);
+                } else if (0 == strcasecmp(jnext->string, "flowcontrol")) {
+                    strncpy(tty->body.flowcontrol, jnext->valuestring, sizeof(tty->body.flowcontrol) - 1);
+                }
+            } else if (jnext->type == cJSON_Number) {
+                if (0 == strcasecmp(jnext->string, "baudrate")) {
+                    tty->body.baudrate = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "databits")) {
+                    tty->body.databits = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "stopbits")) {
+                    tty->body.stopbits = jnext->valueint;
+                }
+            }
+
+            jnext = jnext->next;
+        }while (jnext);
+
+        list_add_tail(&tty->ele_of_inner_tty, &g_jtty_head);
+        jtty_count++;
         jcursor = jcursor->next;
     }
 }
@@ -537,48 +528,38 @@ static unsigned int jtimer_count = 0;
 
 static void __jconf_timer_load(cJSON *entry)
 {
-    cJSON *jcursor, *jtimer;
+    cJSON *jcursor, *jnext;
     struct jconf_timer_inner *timer;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            timer = ztrycalloc(sizeof(*timer));
-            if (!timer) {
-                break;
-            }
-            strncpy(timer->body.head.name, jcursor->string, sizeof(timer->body.head.name) - 1);
-
-            jtimer = jcursor->child;
-            while (jtimer) {
-                if (jtimer->type == cJSON_String) {
-                    if (0 == strcasecmp(jtimer->string, "module")) {
-                        strncpy(timer->body.head.module, jtimer->valuestring, sizeof(timer->body.head.module) - 1);
-                    } else if (0 == strcasecmp(jtimer->string, "timerproc")) {
-                        strncpy(timer->body.timerproc, jtimer->valuestring, sizeof(timer->body.timerproc) - 1);
-                    } else {
-                        ;
-                    }
-                } else if (jtimer->type == cJSON_Number) {
-                    if (0 == strcasecmp(jtimer->string, "interval")) {
-                        timer->body.interval = jtimer->valueint;
-                    } else if (0 == strcasecmp(jtimer->string, "contextsize") || 0 == strcasecmp(jtimer->string, "ctxsize")) {
-                        timer->body.head.ctxsize = jtimer->valueint;
-                    } else {
-                        ;
-                    }
-                } else {
-                    ;
-                }
-
-                jtimer = jtimer->next;
-            }
-
-            list_add_tail(&timer->ele_of_inner_timer, &g_jtimer_head);
-            jtimer_count++;
+        timer = ztrycalloc(sizeof(*timer));
+        if (!timer) {
+            break;
         }
 
+        jnext = __jconf_load_head(jcursor, &timer->body.head);
+        if (!jnext) {
+            zfree(timer);
+            break;
+        }
+        do {
+            if (jnext->type == cJSON_String) {
+                if (0 == strcasecmp(jnext->string, "timerproc")) {
+                    strncpy(timer->body.timerproc, jnext->valuestring, sizeof(timer->body.timerproc) - 1);
+                }
+            } else if (jnext->type == cJSON_Number) {
+                if (0 == strcasecmp(jnext->string, "interval")) {
+                    timer->body.interval = jnext->valueint;
+                }
+            }
+
+            jnext = jnext->next;
+        } while (jnext);
+
+        list_add_tail(&timer->ele_of_inner_timer, &g_jtimer_head);
+        jtimer_count++;
         jcursor = jcursor->next;
     }
 }
@@ -650,40 +631,34 @@ static unsigned int jredis_server_count = 0;
 
 static void __jconf_redis_server_load(cJSON *entry)
 {
-    cJSON *jcursor, *jredis_server;
+    cJSON *jcursor, *jnext;
     struct jconf_redis_server_inner *redis_server;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            redis_server = ztrycalloc(sizeof(*redis_server));
-            if (!redis_server) {
-                break;
-            }
-            strncpy(redis_server->body.head.name, jcursor->string, sizeof(redis_server->body.head.name) - 1);
-
-            jredis_server = jcursor->child;
-            while (jredis_server) {
-                if (jredis_server->type == cJSON_String) {
-                    if (0 == strcasecmp(jredis_server->string, "host")) {
-                        strncpy(redis_server->body.host, jredis_server->valuestring, sizeof(redis_server->body.host) - 1);
-                    }
-                } else if (jredis_server->type == cJSON_Number) {
-                     if (0 == strcasecmp(jredis_server->string, "contextsize") || 0 == strcasecmp(jredis_server->string, "ctxsize")) {
-                        redis_server->body.head.ctxsize = jredis_server->valueint;
-                    }
-                } else {
-                    ;
-                }
-
-                jredis_server = jredis_server->next;
-            }
-
-            list_add_tail(&redis_server->ele_of_inner_redis_server, &g_jredis_server_head);
-            jredis_server_count++;
+        redis_server = ztrycalloc(sizeof(*redis_server));
+        if (!redis_server) {
+            break;
         }
 
+        jnext = __jconf_load_head(jcursor, &redis_server->body.head);
+        if (!jnext) {
+            zfree(redis_server);
+            break;
+        }
+
+        do {
+            if (jnext->type == cJSON_String) {
+                if (0 == strcasecmp(jnext->string, "host")) {
+                    strncpy(redis_server->body.host, jnext->valuestring, sizeof(redis_server->body.host) - 1);
+                }
+            }
+            jnext = jnext->next;
+        } while (jnext);
+
+        list_add_tail(&redis_server->ele_of_inner_redis_server, &g_jredis_server_head);
+        jredis_server_count++;
         jcursor = jcursor->next;
     }
 }
@@ -762,60 +737,47 @@ static void __jconf_subscriber_load(cJSON *entry)
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
-            subscriber = ztrycalloc(sizeof(*subscriber));
-            if (!subscriber) {
-                break;
-            }
-            INIT_LIST_HEAD(&subscriber->body.head_of_channels);
-            strncpy(subscriber->body.head.name, jcursor->string, sizeof(subscriber->body.head.name) - 1);
+        subscriber = ztrycalloc(sizeof(*subscriber));
+        if (!subscriber) {
+            break;
+        }
+        INIT_LIST_HEAD(&subscriber->body.head_of_channels);
 
-            jsubscriber = jcursor->child;
-            while (jsubscriber) {
-                if (jsubscriber->type == cJSON_String) {
-                    if (0 == strcasecmp(jsubscriber->string, "redis-server")) {
-                        strncpy(subscriber->body.redisserver, jsubscriber->valuestring, sizeof(subscriber->body.redisserver) - 1);
-                    } else if (0 == strcasecmp(jsubscriber->string, "execproc")) {
-                        strncpy(subscriber->body.execproc, jsubscriber->valuestring, sizeof(subscriber->body.execproc) - 1);
-                    } else if (0 == strcasecmp(jsubscriber->string, "module")) {
-                        strncpy(subscriber->body.head.module, jsubscriber->valuestring, sizeof(subscriber->body.head.module) - 1);
-                    } else {
-                        ;
-                    }
-                } else if (jsubscriber->type == cJSON_Number) {
-                     if (0 == strcasecmp(jsubscriber->string, "contextsize") || 0 == strcasecmp(jsubscriber->string, "ctxsize")) {
-                        subscriber->body.head.ctxsize = jsubscriber->valueint;
-                    }
-                } else if (jsubscriber->type == cJSON_Array) {
-                    if (0 == strcasecmp(jsubscriber->string, "channels")) {
-                        jchannel = jsubscriber->child;
-                        while (jchannel) {
-                            if (jchannel->type == cJSON_String) {
-                                channel = ztrycalloc(sizeof(*channel));
-                                if (!channel) {
-                                    break;
-                                }
-                                strncpy(channel->pattern, jchannel->valuestring, sizeof(channel->pattern) - 1);
-                                list_add_tail(&channel->ele_of_channels, &subscriber->body.head_of_channels);
-                                subscriber->body.channels_count++;
-                            } else {
-                                ;
-                            }
-
-                            jchannel = jchannel->next;
-                        }
-                    }
-                } else {
-                    ;
-                }
-
-                jsubscriber = jsubscriber->next;
-            }
-
-            list_add_tail(&subscriber->ele_of_inner_subscriber, &g_jsubscriber_head);
-            jsubscriber_count++;
+        jsubscriber = __jconf_load_head(jcursor, &subscriber->body.head);
+        if (!jsubscriber) {
+            zfree(subscriber);
+            break;
         }
 
+        do {
+            if (jsubscriber->type == cJSON_String) {
+                if (0 == strcasecmp(jsubscriber->string, "redis-server")) {
+                    strncpy(subscriber->body.redisserver, jsubscriber->valuestring, sizeof(subscriber->body.redisserver) - 1);
+                } else if (0 == strcasecmp(jsubscriber->string, "execproc")) {
+                    strncpy(subscriber->body.execproc, jsubscriber->valuestring, sizeof(subscriber->body.execproc) - 1);
+                }
+            }  else if (jsubscriber->type == cJSON_Array) {
+                if (0 == strcasecmp(jsubscriber->string, "channels")) {
+                    jchannel = jsubscriber->child;
+                    while (jchannel) {
+                        if (jchannel->type == cJSON_String) {
+                            channel = ztrycalloc(sizeof(*channel));
+                            if (!channel) {
+                                break;
+                            }
+                            strncpy(channel->pattern, jchannel->valuestring, sizeof(channel->pattern) - 1);
+                            list_add_tail(&channel->ele_of_channels, &subscriber->body.head_of_channels);
+                            subscriber->body.channels_count++;
+                        }
+                        jchannel = jchannel->next;
+                    }
+                }
+            }
+            jsubscriber = jsubscriber->next;
+        } while (jsubscriber);
+
+        list_add_tail(&subscriber->ele_of_inner_subscriber, &g_jsubscriber_head);
+        jsubscriber_count++;
         jcursor = jcursor->next;
     }
 }
@@ -894,60 +856,29 @@ static unsigned int jrawobj_count = 0;
 
 static void __jconf_rawobj_load(cJSON *entry)
 {
-    cJSON *jcursor, *jrawobj;
+    cJSON *jcursor, *jnext;
     struct jconf_rawobj_inner *rawobj;
 
     jcursor = entry->child;
 
     while (jcursor) {
-        if (jcursor->type == cJSON_Object) {
             rawobj = ztrycalloc(sizeof(*rawobj));
             if (!rawobj) {
                 break;
             }
-            strncpy(rawobj->body.head.name, jcursor->string, sizeof(rawobj->body.head.name) - 1);
 
-            // default 4 proce
-            strcpy(rawobj->body.freeproc, "freeproc");
-            strcpy(rawobj->body.referproc, "referproc");
-            strcpy(rawobj->body.vwriteproc, "vwriteproc");
-            strcpy(rawobj->body.writeproc, "writeproc");
-
-            jrawobj = jcursor->child;
-            while (jrawobj) {
-                if (jrawobj->type == cJSON_String) {
-                    if (0 == strcasecmp(jrawobj->string, "module")) {
-                        strncpy(rawobj->body.head.module, jrawobj->valuestring, sizeof(rawobj->body.head.module) - 1);
-                    } else if (0 == strcasecmp(jrawobj->string, "init")) {
-                        strncpy(rawobj->body.init, jrawobj->valuestring, sizeof(rawobj->body.init) - 1);
-                    } else if (0 == strcasecmp(jrawobj->string, "writeproc")) {
-                        strncpy(rawobj->body.writeproc, jrawobj->valuestring, sizeof(rawobj->body.writeproc) - 1);
-                    } else if (0 == strcasecmp(jrawobj->string, "vwriteproc")) {
-                        strncpy(rawobj->body.vwriteproc, jrawobj->valuestring, sizeof(rawobj->body.vwriteproc) - 1);
-                    } else if (0 == strcasecmp(jrawobj->string, "freeproc")) {
-                        strncpy(rawobj->body.freeproc, jrawobj->valuestring, sizeof(rawobj->body.freeproc) - 1);
-                    } else if (0 == strcasecmp(jrawobj->string, "referproc")) {
-                        strncpy(rawobj->body.referproc, jrawobj->valuestring, sizeof(rawobj->body.referproc) - 1);
-                    } else {
-                        ;
+            jnext = __jconf_load_head(jcursor, &rawobj->body.head);
+            while (jnext) {
+                if (jnext->type == cJSON_String) {
+                    if (0 == strcasecmp(jnext->string, "initproc")) {
+                        strncpy(rawobj->body.initproc, jnext->valuestring, sizeof(rawobj->body.initproc) - 1);
                     }
-                } else if (jrawobj->type == cJSON_Number) {
-                     if (0 == strcasecmp(jrawobj->string, "contextsize") || 0 == strcasecmp(jrawobj->string, "ctxsize")) {
-                        rawobj->body.head.ctxsize = jrawobj->valueint;
-                    } else {
-                        ;
-                    }
-                } else {
-                    ;
                 }
-
-                jrawobj = jrawobj->next;
+                jnext = jnext->next;
             }
 
             list_add_tail(&rawobj->ele_of_inner_rawobj, &g_jrawobj_head);
             jrawobj_count++;
-        }
-
         jcursor = jcursor->next;
     }
 }

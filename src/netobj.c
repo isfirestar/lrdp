@@ -91,8 +91,6 @@ static void __netobj_on_tcp_accepted(HTCPLINK slink, HTCPLINK clink)
         naos_ipv4tos(cnetp->remote.inet, cnetp->remote.ip, sizeof(cnetp->remote.ip));
         naos_ipv4tos(cnetp->local.inet, cnetp->local.ip, sizeof(cnetp->local.ip));
         cnetp->protocol = snetp->protocol;
-        cnetp->recvproc = snetp->recvproc;
-        cnetp->closeproc = snetp->closeproc;
         cnetp->connectproc = snetp->connectproc;
         // call accept user callback
         if (snetp->acceptproc) {
@@ -110,7 +108,7 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
 {
     lobj_pt lop;
     lobj_seq_t seq;
-    struct netobj *netp;
+    int n;
 
     nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
@@ -122,11 +120,12 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
         return;
     }
 
-    netp = lobj_body(struct netobj *, lop);
-    if (netp->recvproc) {
-        netp->recvproc(lop, data, size);
+    n = lobj_read(lop, (void *)data, size);
+    if (n < 0) {
+        if (n == -ENOENT) {
+            n = lobj_vread(lop, (void **)&data, (size_t *)&size);
+        }
     }
-
     lobj_derefer(lop);
 }
 
@@ -158,7 +157,6 @@ static void __netobj_prclose(HTCPLINK link)
 {
     lobj_pt lop;
     lobj_seq_t seq;
-    struct netobj *netp;
 
     nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
@@ -170,11 +168,7 @@ static void __netobj_prclose(HTCPLINK link)
         return;
     }
 
-    netp = lobj_body(struct netobj *, lop);
-    if (netp->closeproc) {
-        netp->closeproc(lop);
-    }
-
+    lobj_fx_free(lop);
     lobj_derefer(lop);
 }
 
@@ -270,9 +264,10 @@ void netobj_create(const jconf_net_pt jnetcfg)
     lobj_pt lop;
     struct lobj_fx fx = {
         .freeproc = &__netobj_free,
-        .referproc = NULL,
         .writeproc = &__netobj_write,
         .vwriteproc = &__netobj_vwrite,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
     struct netobj *netp;
     nsp_status_t status;
@@ -288,6 +283,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
         return;
     }
     netp = lobj_body(struct netobj *, lop);
+    lobj_cover_fx(lop, jnetcfg->head.freeproc, jnetcfg->head.writeproc, jnetcfg->head.vwriteproc, jnetcfg->head.readproc, jnetcfg->head.vreadproc);
 
     do {
         /* determine protocol type and init framework */
@@ -305,9 +301,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
         netobj_parse_endpoint(jnetcfg->local, &netp->local);
 
         // pass callback function from config to object
-        netp->recvproc = lobj_dlsym(lop, jnetcfg->recvproc);
         netp->acceptproc = lobj_dlsym(lop, jnetcfg->acceptproc);
-        netp->closeproc = lobj_dlsym(lop, jnetcfg->closeproc);
         netp->connectproc = lobj_dlsym(lop, jnetcfg->connectproc);
 
         // save protocol

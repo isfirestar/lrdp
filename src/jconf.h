@@ -11,6 +11,11 @@ struct jconf_head
 {
     JCONF_DECLARE_NORMAL_STRING(name);
     JCONF_DECLARE_NORMAL_STRING(module);
+    JCONF_DECLARE_NORMAL_STRING(freeproc);
+    JCONF_DECLARE_NORMAL_STRING(readproc);
+    JCONF_DECLARE_NORMAL_STRING(vreadproc);
+    JCONF_DECLARE_NORMAL_STRING(writeproc);
+    JCONF_DECLARE_NORMAL_STRING(vwriteproc);
     unsigned int ctxsize;
 };
 
@@ -22,7 +27,6 @@ struct jconf_entry
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(preinitproc);
     JCONF_DECLARE_NORMAL_STRING(postinitproc);
-    JCONF_DECLARE_NORMAL_STRING(exitproc);
 };
 typedef struct jconf_entry jconf_entry_t, *jconf_entry_pt;
 
@@ -60,8 +64,6 @@ struct jconf_net
     JCONF_DECLARE_STRING(remote, 24);
     JCONF_DECLARE_STRING(local, 24);
     JCONF_DECLARE_NORMAL_STRING(acceptproc);
-    JCONF_DECLARE_NORMAL_STRING(recvproc);
-    JCONF_DECLARE_NORMAL_STRING(closeproc);
     JCONF_DECLARE_NORMAL_STRING(connectproc);
     unsigned int protocol;
 };
@@ -79,7 +81,6 @@ struct jconf_tty
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(name);
     JCONF_DECLARE_NORMAL_STRING(module);
-    JCONF_DECLARE_NORMAL_STRING(recvproc);
     JCONF_DECLARE_STRING(device, 128);
     unsigned int baudrate;
     unsigned int databits;
@@ -151,11 +152,7 @@ extern void jconf_subscriber_free();
 struct jconf_rawobj
 {
     struct jconf_head head;
-    JCONF_DECLARE_NORMAL_STRING(init);
-    JCONF_DECLARE_NORMAL_STRING(writeproc);
-    JCONF_DECLARE_NORMAL_STRING(vwriteproc);
-    JCONF_DECLARE_NORMAL_STRING(freeproc);
-    JCONF_DECLARE_NORMAL_STRING(referproc);
+    JCONF_DECLARE_NORMAL_STRING(initproc);
 };
 typedef struct jconf_rawobj jconf_rawobj_t, *jconf_rawobj_pt;
 

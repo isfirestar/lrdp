@@ -17,6 +17,8 @@ static void *__lwp_start_rtn(void *parameter)
     lobj_pt lop;
     struct lwp_item *lwp;
     void *retval;
+    void *objctx;
+    size_t objctxsize;
 
     retval = NULL;
     lop = (lobj_pt)parameter;
@@ -31,6 +33,9 @@ static void *__lwp_start_rtn(void *parameter)
     /* invoke module handler function */
     if (lwp->execproc) {
         retval = lwp->execproc(lop);
+    } else {
+        objctxsize = lobj_get_context(lop, &objctx);
+        lobj_read(lop, objctx, objctxsize);
     }
 
     lobj_ldestroy(lop);
@@ -45,9 +50,10 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     lobj_pt lop;
     struct lobj_fx fx = {
         .freeproc = NULL,
-        .referproc = NULL,
         .writeproc = NULL,
         .vwriteproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
 
     if (!jlwpcfg) {
@@ -59,6 +65,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
         return posix__makeerror(ENOMEM);
     }
     lwp = lobj_body(struct lwp_item *, lop);
+    lobj_cover_fx(lop, jlwpcfg->head.freeproc, jlwpcfg->head.writeproc, jlwpcfg->head.vwriteproc, jlwpcfg->head.readproc, jlwpcfg->head.vreadproc);
 
     do {
         lwp->execproc = lobj_dlsym(lop, jlwpcfg->execproc);

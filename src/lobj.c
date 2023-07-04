@@ -102,7 +102,7 @@ nsp_status_t lobj_init()
     return NSP_STATUS_SUCCESSFUL;
 }
 
-void __lobj_detach_from_dict(lobj_pt lop) 
+void __lobj_detach_from_dict(lobj_pt lop)
 {
     dictDelete(g_dict_hash_byname, (lop)->name);
     dictDelete(g_dict_hash_byseq, &((lop)->seq));
@@ -162,7 +162,7 @@ static lobj_pt __lobj_attach_to_dict(lobj_pt lop)
     dictResult = DICT_ERR;
 
     acquire_spinlock(&g_lobj_container_locker);
-    
+
     dictResult = dictAdd(g_dict_hash_byname, lop->name, lop);
     if (DICT_OK == dictResult) {
         dictResult = dictAdd(g_dict_hash_byseq, &lop->seq, lop);
@@ -171,7 +171,7 @@ static lobj_pt __lobj_attach_to_dict(lobj_pt lop)
         dictDelete(g_dict_hash_byname, lop->name);
         dictDelete(g_dict_hash_byseq, &lop->seq);
     }
-    
+
     release_spinlock(&g_lobj_container_locker);
 
     if (DICT_OK != dictResult) {
@@ -268,6 +268,43 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
     return __lobj_attach_to_dict(lop);
 }
 
+void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc)
+{
+    if (!lop) {
+        return;
+    }
+
+    if (!lop->handle) {
+        return;
+    }
+
+    if (freeproc) {
+        if (0 != freeproc[0]) {
+            lop->fx.freeproc = (freeproc_pfn)ifos_dlsym(lop->handle, freeproc);
+        }
+    }
+    if (writeproc) {
+        if (0 != writeproc[0]) {
+            lop->fx.writeproc = (write_pfn)ifos_dlsym(lop->handle, writeproc);
+        }
+    }
+    if (vwriteproc) {
+        if (0 != vwriteproc[0]) {
+            lop->fx.vwriteproc = (vwrite_pfn)ifos_dlsym(lop->handle, vwriteproc);
+        }
+    }
+    if (readproc) {
+        if (0 != readproc[0]) {
+            lop->fx.readproc = (read_pfn)ifos_dlsym(lop->handle, readproc);
+        }
+    }
+    if (vreadproc) {
+        if (0 != vreadproc[0]) {
+            lop->fx.vreadproc = (vread_pfn)ifos_dlsym(lop->handle, vreadproc);
+        }
+    }
+}
+
 static void __lobj_finalize(lobj_pt lop)
 {
     if (!lop) {
@@ -337,7 +374,7 @@ void lobj_qdestroy(int64_t seq)
         }
     }
     release_spinlock(&g_lobj_container_locker);
-    
+
     __lobj_finalize(lop);
 }
 
@@ -355,7 +392,7 @@ void lobj_ldestroy(lobj_pt lop)
         __lobj_detach_from_dict(lop);
     }
     release_spinlock(&g_lobj_container_locker);
-    
+
     __lobj_finalize(lop);
 }
 
@@ -387,15 +424,9 @@ lobj_pt lobj_refer(const char *name)
             lop = NULL;
          } else {
             lop->refcount++;
-         } 
+         }
     }
     release_spinlock(&g_lobj_container_locker);
-
-    if (lop) {
-        if (lop->fx.referproc) {
-            lop->fx.referproc(lop);
-        }
-    }
     return lop;
 }
 
@@ -414,15 +445,9 @@ lobj_pt lobj_qrefer(int64_t seq)
             lop = NULL;
          } else {
             lop->refcount++;
-         } 
+         }
     }
     release_spinlock(&g_lobj_container_locker);
-
-    if (lop) {
-        if (lop->fx.referproc) {
-            lop->fx.referproc(lop);
-        }
-    }
     return lop;
 }
 
@@ -459,6 +484,17 @@ void lobj_derefer(lobj_pt lop)
     __lobj_finalize(ref);
 }
 
+void lobj_fx_free(lobj_pt lop)
+{
+    if (!lop) {
+        return;
+    }
+
+    if (lop->fx.freeproc) {
+        lop->fx.freeproc(lop, lop->ctx, lop->ctxsize);
+    }
+}
+
 int lobj_write(lobj_pt lop, const void *data, size_t n)
 {
     if (!lop || !data || 0 == n) {
@@ -466,7 +502,7 @@ int lobj_write(lobj_pt lop, const void *data, size_t n)
     }
 
     if (!lop->fx.writeproc) {
-        return posix__makeerror(EINVAL);
+        return posix__makeerror(ENOENT);
     }
 
     return lop->fx.writeproc(lop, data, n);
@@ -479,17 +515,43 @@ int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
     }
 
     if (!lop->fx.vwriteproc) {
-        return posix__makeerror(EINVAL);
+        return posix__makeerror(ENOENT);
     }
 
     return lop->fx.vwriteproc(lop, elements, vdata, vsize);
+}
+
+int lobj_read(lobj_pt lop, void *data, size_t n)
+{
+    if (!lop || !data || 0 == n) {
+        return posix__makeerror(EINVAL);
+    }
+
+    if (!lop->fx.readproc) {
+        return posix__makeerror(ENOENT);
+    }
+
+    return lop->fx.readproc(lop, data, n);
+}
+
+int lobj_vread(lobj_pt lop, void **data, size_t *n)
+{
+    if (!lop || !data || !n) {
+        return posix__makeerror(EINVAL);
+    }
+
+    if (!lop->fx.vreadproc) {
+        return posix__makeerror(ENOENT);
+    }
+
+    return lop->fx.vreadproc(lop, data, n);
 }
 
 /* helper function impls */
 char *lobj_random_name(char *holder, size_t size)
 {
     monotime now;
-    
+
     now = getMonotonicUs();
     snprintf(holder, size, "%u|%u|%u", (unsigned int)(now >> 32), (unsigned int)(now & 0xffffffff), redisLrand48());
     return holder;

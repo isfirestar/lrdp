@@ -4,22 +4,23 @@
 lobj_pt rawobj_create(const jconf_rawobj_pt jrawobj)
 {
     lobj_pt lop;
-    struct lobj_fx fx;
-    void *dlhandle;
-
-    dlhandle = ifos_dlopen(jrawobj->head.module);
-    if (!dlhandle) {
-        return NULL;
-    }
-    fx.freeproc = ifos_dlsym(dlhandle, jrawobj->freeproc);
-    fx.referproc = ifos_dlsym(dlhandle, jrawobj->referproc);
-    fx.writeproc = ifos_dlsym(dlhandle, jrawobj->writeproc);
-    fx.vwriteproc = ifos_dlsym(dlhandle, jrawobj->vwriteproc);
+    struct lobj_fx fx = {
+        .freeproc = NULL,
+        .writeproc = NULL,
+        .vwriteproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
+    };
+    void (*rawinitproc)(lobj_pt lop);
 
     lop = lobj_create(jrawobj->head.name, jrawobj->head.module, 0, jrawobj->head.ctxsize, &fx);
     if (lop) {
-        if (jrawobj->init) {
-            ;
+        lobj_cover_fx(lop, jrawobj->head.freeproc, jrawobj->head.writeproc, jrawobj->head.vwriteproc, jrawobj->head.readproc, jrawobj->head.vreadproc);
+        if (0 != jrawobj->initproc) {
+            rawinitproc = lobj_dlsym(lop, jrawobj->initproc);
+            if (rawinitproc) {
+                rawinitproc(lop);
+            }
         }
     }
     return lop;

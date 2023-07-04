@@ -25,6 +25,7 @@ struct nav_context
     int odo_meter;      // indicate the distance the robot has traveled
     int distance_remain;
     int deceleration_point;
+    int feedback_vx;
     float deltaT;
 };
 static struct nav_context *g_nav = NULL;
@@ -75,7 +76,9 @@ void nav_traject_control(lobj_pt lop)
     nav->distance_remain = nav->target_pos - nav->current_pos;
     // ignore deviation less than 3mm
     if (fabs(nav->distance_remain) <= PREMISSIVE_DEVIATION) {
-        __nav_write_velocity(0.0);
+        if (0 != nav->feedback_vx) {
+            __nav_write_velocity(0.0);
+        }
         nav->deceleration_point = 0;
         return;
     }
@@ -132,8 +135,9 @@ void nav_traject_control(lobj_pt lop)
 // Calculate the current position by integrating the velocity
 void __nav_adjust_position(struct nav_context *nav, float vx)
 {
-    nav->current_pos += vx * 1000 * nav->deltaT;
-    nav->odo_meter += vx * 1000 * nav->deltaT;
+    nav->feedback_vx = vx * 1000;
+    nav->current_pos += nav->feedback_vx * nav->deltaT;
+    nav->odo_meter += nav->feedback_vx * nav->deltaT;
 
     if (nav->current_pos != 0 && fabs(nav->current_pos - nav->target_pos) > PREMISSIVE_DEVIATION) {
         printf("current_pos: %d, odo_meter: %d\n", nav->current_pos, nav->odo_meter);
@@ -161,7 +165,7 @@ void nav_on_motion_task(lobj_pt lop, const char *channel, const char *pattern, c
     if (pattern && message) {
         if (0 == strcmp("motion.pos.x", pattern)) {
             pos_in_meter = atof(message);
-            g_nav->current_pos = pos_in_meter * 1000;  // convert to millimeter
+            g_nav->target_pos = pos_in_meter * 1000;  // convert to millimeter
         } else {
             printf("pattern missmatch.\n");
         }

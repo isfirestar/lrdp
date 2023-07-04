@@ -8,7 +8,6 @@ struct ttyobj
 {
     int fd;
     struct termios options;
-    void (*recvproc)(lobj_pt lop, const void *data, unsigned int size);
     char device[128];
     struct aeEventLoop *el;
 };
@@ -129,9 +128,10 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
     struct ttyobj *ttyp;
     const struct lobj_fx fx = {
         .freeproc = &__ttyobj_on_free,
-        .referproc = NULL,
         .writeproc = &__ttyobj_write,
         .vwriteproc = NULL,
+        .readproc = NULL,
+        .vreadproc = NULL,
     };
 
     if (!jtty) {
@@ -143,8 +143,9 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         return NULL;
     }
     ttyp = lobj_body(struct ttyobj *, lop);
+    // free and write proc can not be covered
+    lobj_cover_fx(lop, NULL, NULL, jtty->head.vwriteproc, jtty->head.readproc, jtty->head.vreadproc);
 
-    ttyp->recvproc = lobj_dlsym(lop, jtty->recvproc);
     do {
         // open tty file
         strncpy(ttyp->device, jtty->device, sizeof(ttyp->device) - 1);
@@ -238,19 +239,20 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
 
 static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
 {
-    lobj_pt lop = (lobj_pt)clientData;
-    struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
+    lobj_pt lop;
+    struct ttyobj *ttyp;
     char buf[1024];
     ssize_t n;
 
+    lop = (lobj_pt)clientData;
+
     n = read(fd, buf, sizeof(buf));
     if (n > 0) {
-        if (ttyp->recvproc) {
-            ttyp->recvproc(lop, buf, n);
-        }
+        lobj_read(lop, buf, n);
     } else if (n < 0) {
         if (errno != EAGAIN) {
             aeDeleteFileEvent(el, fd, AE_READABLE);
+            ttyp = lobj_body(struct ttyobj *, lop);
             printf("ttyobj: %s read error: %s\n", ttyp->device, strerror(errno));
         }
     } else {
@@ -260,8 +262,9 @@ static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int 
 
 void ttyobj_add_file(struct aeEventLoop *el, lobj_pt lop)
 {
-    struct ttyobj *ttyp = lobj_body(struct ttyobj *, lop);
+    struct ttyobj *ttyp;
 
+    ttyp = lobj_body(struct ttyobj *, lop);
     ttyp->el = el;
     if (ttyp->fd > 0) {
         aeCreateFileEvent(el, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);

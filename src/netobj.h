@@ -13,8 +13,6 @@ struct endpoint
 
 struct netobj
 {
-    void (*recvproc)(lobj_pt lop, const void *data, unsigned int size);
-    void (*closeproc)(lobj_pt lop);
     void (*acceptproc)(lobj_pt lop);
     void (*connectproc)(lobj_pt lop);
     int protocol;
