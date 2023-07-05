@@ -47,7 +47,9 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
         reply->element[2]->type == REDIS_REPLY_STRING &&
         reply->element[3]->type == REDIS_REPLY_STRING)
     {
-        subobj->execproc(lop, reply->element[1]->str, reply->element[2]->str, reply->element[3]->str, reply->element[3]->len);
+        if (0 == strcasecmp(reply->element[0]->str, "pmessage")) {
+            subobj->execproc(lop, reply->element[1]->str, reply->element[2]->str, reply->element[3]->str, reply->element[3]->len);
+        }
     }
 
     lobj_derefer(lop);

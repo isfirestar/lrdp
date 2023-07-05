@@ -4,6 +4,7 @@
 
 #include "ifos.h"
 #include "naos.h"
+#include "nav.h"
 
 #include <stdio.h>
 
@@ -13,23 +14,25 @@ int rb_mcu_init(lobj_pt lop, int argc, char **argv)
     return 0;
 }
 
-void __rb_publish_velocity_feedback(float vx)
+void __rb_publish_velocity_feedback(int vx)
 {
     lobj_pt publisher;
-    char str_vx[5];
-    const char *vdata[2];
+    const void *vdata[2];
     size_t vsize[2];
+    struct nav_trace trace;
 
     publisher = lobj_refer("publisher");
     if (!publisher) {
         return;
     }
 
+    trace.vx = vx;
+    trace.vx_tx_timestamp = getMonotonicUs();
+
     vdata[0] = "feedback.v_x";
     vsize[0] = strlen("feedback.v_x");
-    sprintf(str_vx, "%.02f", vx);
-    vdata[1] = str_vx;
-    vsize[1] = strlen(str_vx);
+    vdata[1] = &trace;
+    vsize[1] = sizeof(trace);
     lobj_vwrite(publisher, 2, (const void **)vdata, vsize);
     lobj_derefer(publisher);
 }
@@ -51,21 +54,17 @@ static unsigned char __rb_calculate_mcu_checksum(const unsigned char *origin, un
     return checksum;
 }
 
-static void __rb_write_uart(lobj_pt lop, float fxv)
+static void __rb_write_uart(lobj_pt lop, int vx)
 {
     unsigned char tx_buffer[RB_MCU_PACKAGE_SIZE] = { 0 };
-    short vx;
     unsigned char mcu_command;
     lobj_pt publisher;
-
-    vx = 0;
 
     if (is_float_zero(vx)) {
         mcu_command = SET_XY_STOP;
         vx = 0;
     } else {
         mcu_command = SET_KEY_XY_CMD;
-        vx = fxv * 1000;
     }
 
     if (vx < 0) {
@@ -86,31 +85,27 @@ static void __rb_write_uart(lobj_pt lop, float fxv)
     } else {
         naos_hexdump(tx_buffer, sizeof(tx_buffer), 16, NULL);
         // in this case, we using setting velocity as the feedback
-        __rb_publish_velocity_feedback(fxv);
+        __rb_publish_velocity_feedback(vx);
     }
 }
 
-static void __rb_set_velocity(float vx)
+static void __rb_set_velocity(const struct nav_trace *trace)
 {
     lobj_pt lop;
 
-    printf("[%d] __rb_set_velocity %f\n", ifos_gettid(), vx);
+    printf("[%d] __rb_set_velocity %f\n", ifos_gettid(), (float)trace->vx / 1000);
 
     // get mcu tty object
     lop = lobj_refer("rb_motion_tty");
-    if (!lop) {
-        printf("[%d] __rb_set_velocity rb_motion_tty object is NULL\n", ifos_gettid());
-    }
-
-    __rb_write_uart(lop, vx);
+    __rb_write_uart(lop, trace->vx);
     lobj_derefer(lop);
 }
 
 void rb_mcu_on_velocity_update(lobj_pt lop, const char *channel, const char *pattern, const char *message, size_t len)
 {
     if (pattern && message) {
-        if (0 == strcmp("motion.v_x", pattern)) {
-            __rb_set_velocity(atof(message));
+        if (0 == strcmp("motion.v_x", pattern) && len == sizeof(struct nav_trace)) {
+            __rb_set_velocity((const struct nav_trace *)message);
         } else {
             printf("pattern missmatch.\n");
         }
@@ -119,6 +114,5 @@ void rb_mcu_on_velocity_update(lobj_pt lop, const char *channel, const char *pat
 
 void rb_mcu_on_recvdata(lobj_pt lop, void *data, unsigned int size)
 {
-    printf("recv incoming mcu data:\n");
     naos_hexdump(data, size, 16, NULL);
 }

@@ -1,18 +1,6 @@
 #include "pid.h"
 
-struct pid1d
-{
-    float Kp, Ki, Kd; // PID parameters
-    velocity1d_t target; // target velocity
-    velocity1d_t current; // current velocity
-    velocity1d_t error; // error between target and current velocity
-    velocity1d_t error_last; // error of last time
-    velocity1d_t integral; // integral of error
-    velocity1d_t output; // output of PID
-};
-typedef struct pid1d pid1d_t;
-
-void pid1d_init(velocity1d_pt pid, float Kp, float Ki, float Kd)
+void pid1d_init(pid1d_pt pid, float Kp, float Ki, float Kd)
 {
     pid->Kp = Kp;
     pid->Ki = Ki;
@@ -25,7 +13,7 @@ void pid1d_init(velocity1d_pt pid, float Kp, float Ki, float Kd)
     pid->output = 0.0;
 }
 
-velocity1d_t pid1d_calculate(velocity1d_pt pid, velocity1d_t target, velocity1d_t current)
+velocity1d_t pid1d_calculate(pid1d_pt pid, velocity1d_t target, velocity1d_t current)
 {
     pid->target = target;
     pid->current = current;
@@ -35,18 +23,6 @@ velocity1d_t pid1d_calculate(velocity1d_pt pid, velocity1d_t target, velocity1d_
     pid->error_last = pid->error;
     return pid->output;
 }
-
-struct pid2d
-{
-    float Kp, Ki, Kd; // PID parameters
-    velocity2d_t target; // target velocity
-    velocity2d_t current; // current velocity
-    velocity2d_t error; // error between target and current velocity
-    velocity2d_t error_last; // error of last time
-    velocity2d_t integral; // integral of error
-    velocity2d_t output; // output of PID
-};
-typedef struct pid2d pid2d_t;
 
 void pid2d_init(pid2d_pt pid, float Kp, float Ki, float Kd)
 {

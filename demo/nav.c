@@ -1,8 +1,7 @@
 #include "lobj.h"
 
 #include "ifos.h"
-#include "naos.h"
-#include "rand.h"
+#include "nav.h"
 
 #include <stdio.h>
 #include <time.h>
@@ -35,22 +34,20 @@ static struct nav_context *g_nav = NULL;
 #define MAX_ACC (50)   // 0.2 Metre per second squared (0.2m/s^2)
 #define PREMISSIVE_DEVIATION (3)    // 3mm
 
-static void __nav_write_velocity(float vx)
+static void __nav_publish_velocity(int vx)
 {
     lobj_pt publisher;
-    char str_vx[5];
+    struct nav_trace trace;
+
+    trace.vx = vx;
+    trace.vx_tx_timestamp = getMonotonicUs();
 
     publisher = lobj_refer("publisher");
     if (!publisher) {
         return;
     }
 
-    if (!is_float_equal(0, vx)) {
-        printf("vx: %.02f\n", vx);
-    }
-
-    sprintf(str_vx, "%.02f", vx);
-    lobj_write(publisher, str_vx, 4);
+    lobj_write(publisher, &trace, sizeof(trace));
     lobj_derefer(publisher);
 }
 
@@ -77,7 +74,7 @@ void nav_traject_control(lobj_pt lop)
     // ignore deviation less than 3mm
     if (fabs(nav->distance_remain) <= PREMISSIVE_DEVIATION) {
         if (0 != nav->feedback_vx) {
-            __nav_write_velocity(0.0);
+            __nav_publish_velocity(0);
         }
         nav->deceleration_point = 0;
         return;
@@ -129,29 +126,27 @@ void nav_traject_control(lobj_pt lop)
         }
     }
 
-    __nav_write_velocity(nav->current_vx / 1000.0);
+    __nav_publish_velocity(nav->current_vx);
 }
 
 // Calculate the current position by integrating the velocity
-void __nav_adjust_position(struct nav_context *nav, float vx)
+void __nav_adjust_position(const struct nav_trace *trace)
 {
-    nav->feedback_vx = vx * 1000;
-    nav->current_pos += nav->feedback_vx * nav->deltaT;
-    nav->odo_meter += nav->feedback_vx * nav->deltaT;
+    g_nav->feedback_vx = trace->vx;
+    g_nav->deltaT = 0.02 + (getMonotonicUs() - trace->vx_tx_timestamp) / 1000000.0;
+    g_nav->current_pos += g_nav->feedback_vx * g_nav->deltaT;
+    g_nav->odo_meter += g_nav->feedback_vx * g_nav->deltaT;
 
-    if (nav->current_pos != 0 && fabs(nav->current_pos - nav->target_pos) > PREMISSIVE_DEVIATION) {
-        printf("current_pos: %d, odo_meter: %d\n", nav->current_pos, nav->odo_meter);
+    if (g_nav->current_pos != 0 && fabs(g_nav->current_pos - g_nav->target_pos) > PREMISSIVE_DEVIATION) {
+        printf("current_pos: %d, odo_meter: %d\n", g_nav->current_pos, g_nav->odo_meter);
     }
 }
 
 void nav_on_velocity_feedback(lobj_pt lop, const char *channel, const char *pattern, const char *message, size_t len)
 {
-    float vx;
-
     if (pattern && message) {
-        if (0 == strcmp("feedback.v_x", pattern)) {
-            vx = atof(message);
-            __nav_adjust_position(g_nav, vx);
+        if (0 == strcmp("feedback.v_x", pattern) && len == sizeof(struct nav_trace)) {
+            __nav_adjust_position((const struct nav_trace *)message);
         } else {
             printf("pattern missmatch.\n");
         }
