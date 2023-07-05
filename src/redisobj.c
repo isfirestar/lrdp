@@ -24,9 +24,14 @@ static void __redisobj_free(lobj_pt lop, void *context, size_t ctxsize)
     }
 }
 
+static void __redisobj_default_callbackfn(struct redisAsyncContext *ac, void *r, void *privateData)
+{
+}
+
 static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata, size_t *vsize)
 {
     struct redisobj *redis_server_obj;
+    redisCallbackFn *redisobjDefaultCallback;
 
     if (!lop || elements < 3 || !vdata || !vsize) {
         return -1;
@@ -38,7 +43,12 @@ static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata,
 
     redis_server_obj = lobj_body(struct redisobj *, lop);
 
-    return redisAsyncCommandArgv(redis_server_obj->c, (redisCallbackFn *)vdata[0], (void *)vdata[1], elements - 2, (const char **)&vdata[2], &vsize[2]);
+    redisobjDefaultCallback = &__redisobj_default_callbackfn;
+    if (vdata[0]) {
+        redisobjDefaultCallback = (redisCallbackFn *)vdata[0];
+    }
+
+    return redisAsyncCommandArgv(redis_server_obj->c, redisobjDefaultCallback, (void *)vdata[1], elements - 2, (const char **)&vdata[2], &vsize[2]);
 }
 
 extern int redisAeAttach(aeEventLoop *loop, redisAsyncContext *ac);
