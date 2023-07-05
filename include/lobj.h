@@ -21,7 +21,7 @@ typedef void (*freeproc_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 typedef int (*read_pfn)(lobj_pt lop, void *data, size_t n);
-typedef int (*vread_pfn)(lobj_pt lop, void **data, size_t *n);
+typedef int (*vread_pfn)(lobj_pt lop, int elements, void **data, size_t *n);
 
 struct lobj_fx
 {
@@ -49,26 +49,31 @@ extern lobj_pt lobj_qrefer(lobj_seq_t seq);
 extern void lobj_derefer(lobj_pt lop);
 
 /* write data according to the lite object, this IO request will be dispatch to low-level object entity
- * for SOCKET : UDP socket object MUST call @lobj_vwrite instead of @lobj_write and at least 2 elements in @vdata
+ * for SOCKET : UDP socket object MUST call @lobj_fx_vwrite instead of @lobj_fx_write and at least 2 elements in @vdata
  *              the second element in @vdata is a null-terminated string which represent the destination endpoint format like: "253.253.253:65534"
- *              TCP socket object use @lobj_vwrite are almost the same with @lobj_write, vdata and vsize only use the first element
+ *              TCP socket object use @lobj_fx_vwrite are almost the same with @lobj_fx_write, vdata and vsize only use the first element
  * for REDIS :  layer of vdata are :
  *              1. asyn callback function with prototype: void (*redisCallbackFn)(struct redisAsyncContext *ac, void *r, void *priveData)
  *              2. private data(can be NULL)
  *              [3,n] are the redis command arguments
  */
 extern void lobj_fx_free(lobj_pt lop);
-extern int lobj_write(lobj_pt lop, const void *data, size_t n);
-extern int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
-extern int lobj_read(lobj_pt lop, void *data, size_t n);
-extern int lobj_vread(lobj_pt lop, void **data, size_t *n);
+extern int lobj_fx_write(lobj_pt lop, const void *data, size_t n);
+extern int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
+extern int lobj_fx_read(lobj_pt lop, void *data, size_t n);
+extern int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n);
 
 /* object helper function impls */
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
 extern char *lobj_random_name(char *holder, size_t size);
+/* query the context size in bytes of specify object, if @ctx not null, the context pointer will storage on it
+ *  ise @lob_resize_context to reset the context buffer size, you can specify zero newsize to delete the existing context buffer */
 extern size_t lobj_get_context(lobj_pt lop, void **ctx);
-extern void *lobj_get_body(lobj_pt lop); // return lop->body
-extern const void *lobj_cget_body(const lobj_pt lop); // return lop->body
+extern void *lobj_resize_context(lobj_pt lop, size_t newsize);
+/* obtain the body pointer or constant pointer */
+extern void *lobj_get_body(lobj_pt lop);
+extern const void *lobj_cget_body(const lobj_pt lop);
+/* obtain the index sequence or name of object */
 extern lobj_seq_t lobj_get_seq(lobj_pt lop);
 extern const char *lobj_get_name(lobj_pt lop);
 

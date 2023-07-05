@@ -89,7 +89,7 @@ static void __do_subscriberobj(lobj_pt lop)
         vsize[i + 3] = strlen(subobj->channel[i].pattern);
     }
 
-    lobj_vwrite(subobj->redislop,  vcount, (const void **)vdata, vsize);
+    lobj_fx_vwrite(subobj->redislop,  vcount, (const void **)vdata, vsize);
     zfree(vdata);
     zfree(vsize);
 }

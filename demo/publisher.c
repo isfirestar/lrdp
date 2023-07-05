@@ -24,14 +24,9 @@ int nav_publish_velocity(lobj_pt lop, const void *data, size_t n)
     vdata[4] = data;
     vsize[4] = n;
 
-    written = lobj_vwrite(redislop, 5, (const void **)vdata, vsize);
+    written = lobj_fx_vwrite(redislop, 5, (const void **)vdata, vsize);
     lobj_derefer(redislop);
     return written;
-}
-
-static void __nav_publish_callback(struct redisAsyncContext *ac, void *r, void *privateData)
-{
-
 }
 
 int nav_publish_any(lobj_pt lop, int elements, const void **pdata, size_t *psize)
@@ -63,8 +58,8 @@ int nav_publish_any(lobj_pt lop, int elements, const void **pdata, size_t *psize
         return -1;
     }
 
-    vdata[0] = __nav_publish_callback;
-    vsize[0] = sizeof(void *);
+    vdata[0] = NULL;
+    vsize[0] = 0;
     vdata[1] = NULL;
     vsize[1] = 0;
     vdata[2] = "PUBLISH";
@@ -74,7 +69,7 @@ int nav_publish_any(lobj_pt lop, int elements, const void **pdata, size_t *psize
         vsize[3 + i] = psize[i];
     }
 
-    n = lobj_vwrite(redislop, elements + 3, (const void **)vdata, vsize);
+    n = lobj_fx_vwrite(redislop, elements + 3, (const void **)vdata, vsize);
     lobj_derefer(redislop);
     zfree(vdata);
     zfree(vsize);

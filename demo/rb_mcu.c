@@ -33,7 +33,7 @@ void __rb_publish_velocity_feedback(int vx)
     vsize[0] = strlen("feedback.v_x");
     vdata[1] = &trace;
     vsize[1] = sizeof(trace);
-    lobj_vwrite(publisher, 2, (const void **)vdata, vsize);
+    lobj_fx_vwrite(publisher, 2, (const void **)vdata, vsize);
     lobj_derefer(publisher);
 }
 
@@ -81,7 +81,7 @@ static void __rb_write_uart(lobj_pt lop, int vx)
 
     // if MCU object are correct, we send data to serial port, otherwise, we only print data buffer
     if (lop) {
-        lobj_write(lop, tx_buffer, sizeof(tx_buffer));
+        lobj_fx_write(lop, tx_buffer, sizeof(tx_buffer));
     } else {
         naos_hexdump(tx_buffer, sizeof(tx_buffer), 16, NULL);
         // in this case, we using setting velocity as the feedback

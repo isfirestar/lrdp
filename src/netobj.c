@@ -108,7 +108,6 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
 {
     lobj_pt lop;
     lobj_seq_t seq;
-    int n;
 
     nis_cntl(link, NI_GETCTX, (void **)&seq);
     if (!seq) {
@@ -120,11 +119,8 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
         return;
     }
 
-    n = lobj_read(lop, (void *)data, size);
-    if (n < 0) {
-        if (n == -ENOENT) {
-            n = lobj_vread(lop, (void **)&data, (size_t *)&size);
-        }
+    if (lobj_fx_read(lop, (void *)data, size) == -ENOENT) {
+        lobj_fx_vread(lop, 1, (void **)&data, (size_t *)&size);
     }
     lobj_derefer(lop);
 }

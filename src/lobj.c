@@ -18,7 +18,6 @@ struct lobj
 {
     lobj_seq_t seq;                 // seq id of object
     char name[LOBJ_MAX_NAME_LEN];   // name of object
-    char module[256];               // host share library name of object
     void *handle;                   // host share library handle of object
     int refcount;                   // reference count of object
     enum lobj_status status;        // status of object
@@ -184,6 +183,46 @@ static lobj_pt __lobj_attach_to_dict(lobj_pt lop)
     return lop;
 }
 
+void __lobj_free_module(lobj_pt lop, void *ctx, size_t ctxsize)
+{
+    if (lop->handle) {
+        ifos_dlclose(lop->handle);
+    }
+}
+
+static void *__lobj_create_module(const char *module)
+{
+    lobj_pt lop;
+    struct lobj_fx fx = {
+        .freeproc = __lobj_free_module,
+    };
+    void *handle;
+    void (*dl_main)();
+
+    lop = lobj_refer(module);
+    if (lop) {
+        handle = lop->handle;
+        lobj_derefer(lop);
+        return handle;
+    }
+
+    lop = lobj_create(module, NULL, 0, 0, &fx);
+    if (!lop) {
+        return NULL;
+    }
+
+    lop->handle = ifos_dlopen(module);
+    if (!lop->handle) {
+        printf("%s\n", ifos_dlerror());
+    } else {
+        dl_main = ifos_dlsym(lop->handle, "dl_main");
+        if (dl_main) {
+            dl_main();
+        }
+    }
+    return lop->handle;
+}
+
 lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ctxsize, const struct lobj_fx *fx)
 {
     lobj_pt lop;
@@ -207,11 +246,7 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
     lop->seq = seq;
     strncpy(lop->name, oname, sizeof(lop->name) - 1);
     if (module) {
-        strncpy(lop->module, module, sizeof(lop->module) - 1);
-        lop->handle = ifos_dlopen(module);
-        if (!lop->handle) {
-            printf("%s\n", ifos_dlerror());
-        }
+        lop->handle = __lobj_create_module(module);
     }
     lop->size = size;
     lop->refcount = 0;
@@ -221,6 +256,9 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
     lop->ctxsize = (ctxsize + sizeof(long) - 1) & ~(sizeof(long) - 1); /* ctxsize MUST align to the upper sizeof(long) */
     if (lop->ctxsize > 0) {
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
+        if (!lop->ctx) {
+            lop->ctxsize = 0; /* failed on context allocation didn't affect process continue */
+        }
     }
 
     return __lobj_attach_to_dict(lop);
@@ -250,7 +288,6 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
 
     lop->seq = seq;
     strncpy(lop->name, (NULL == name ? lobj_random_name(holder, sizeof(holder)) : name), sizeof(lop->name) - 1);
-    strncpy(lop->module, olop->module, sizeof(lop->module) - 1);
     lop->handle = olop->handle;
     lop->size = olop->size;
     lop->refcount = 0;
@@ -495,7 +532,7 @@ void lobj_fx_free(lobj_pt lop)
     }
 }
 
-int lobj_write(lobj_pt lop, const void *data, size_t n)
+int lobj_fx_write(lobj_pt lop, const void *data, size_t n)
 {
     if (!lop || !data || 0 == n) {
         return posix__makeerror(EINVAL);
@@ -508,7 +545,7 @@ int lobj_write(lobj_pt lop, const void *data, size_t n)
     return lop->fx.writeproc(lop, data, n);
 }
 
-int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
 {
     if (!lop || !vdata || !vsize) {
         return posix__makeerror(EINVAL);
@@ -521,7 +558,7 @@ int lobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
     return lop->fx.vwriteproc(lop, elements, vdata, vsize);
 }
 
-int lobj_read(lobj_pt lop, void *data, size_t n)
+int lobj_fx_read(lobj_pt lop, void *data, size_t n)
 {
     if (!lop || !data || 0 == n) {
         return posix__makeerror(EINVAL);
@@ -534,9 +571,9 @@ int lobj_read(lobj_pt lop, void *data, size_t n)
     return lop->fx.readproc(lop, data, n);
 }
 
-int lobj_vread(lobj_pt lop, void **data, size_t *n)
+int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n)
 {
-    if (!lop || !data || !n) {
+    if (!lop || !data || !n || 0 == elements) {
         return posix__makeerror(EINVAL);
     }
 
@@ -544,7 +581,7 @@ int lobj_vread(lobj_pt lop, void **data, size_t *n)
         return posix__makeerror(ENOENT);
     }
 
-    return lop->fx.vreadproc(lop, data, n);
+    return lop->fx.vreadproc(lop, elements, data, n);
 }
 
 /* helper function impls */
@@ -559,12 +596,47 @@ char *lobj_random_name(char *holder, size_t size)
 
 size_t lobj_get_context(lobj_pt lop, void **ctx)
 {
-    if (!lop || !ctx) {
+    if (!lop) {
         return 0;
     }
 
-    *ctx = lop->ctx;
+    if (ctx) {
+        *ctx = lop->ctx;
+    }
+
     return lop->ctxsize;
+}
+
+void *lobj_resize_context(lobj_pt lop, size_t newsize)
+{
+    void *newctx;
+
+    if (!lop) {
+        return NULL;
+    }
+
+    if (0 == newsize) {
+        if (lop->ctx) {
+            zfree(lop->ctx);
+            lop->ctx = NULL;
+        }
+        lop->ctxsize = 0;
+        return NULL;
+    }
+
+    if (!lop->ctx) {
+        newctx = zmalloc(newsize);
+    } else {
+        newctx = ztryrealloc(lop->ctx, newsize);
+    }
+
+    if (!newctx) {
+        return NULL;
+    }
+
+    lop->ctx = newctx;
+    lop->ctxsize = newsize;
+    return newctx;
 }
 
 void *lobj_get_body(lobj_pt lop)

@@ -35,7 +35,7 @@ static void *__lwp_start_rtn(void *parameter)
         retval = lwp->execproc(lop);
     } else {
         objctxsize = lobj_get_context(lop, &objctx);
-        lobj_read(lop, objctx, objctxsize);
+        lobj_fx_read(lop, objctx, objctxsize);
     }
 
     lobj_ldestroy(lop);

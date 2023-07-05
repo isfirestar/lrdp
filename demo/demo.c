@@ -101,10 +101,10 @@ void dep_tcp_on_received(lobj_pt lop, void *data, size_t size)
     sleep(1);
 
     if (0 == strcmp("hello", p)) {
-        lobj_write(lop, "world", 5);
+        lobj_fx_write(lop, "world", 5);
     } else {
         if (0 == strcmp("world", p)) {
-            lobj_write(lop, "hello", 5);
+            lobj_fx_write(lop, "hello", 5);
         }
     }
 }
@@ -124,5 +124,5 @@ void dep_tcp_on_connected(lobj_pt lop)
     printf("[%d] dep_tcp_on_connected\n", ifos_gettid());
 
     // send a simple packet to server
-    lobj_write(lop, "hello", 5);
+    lobj_fx_write(lop, "hello", 5);
 }

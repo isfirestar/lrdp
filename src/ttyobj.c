@@ -248,7 +248,7 @@ static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int 
 
     n = read(fd, buf, sizeof(buf));
     if (n > 0) {
-        lobj_read(lop, buf, n);
+        lobj_fx_read(lop, buf, n);
     } else if (n < 0) {
         if (errno != EAGAIN) {
             aeDeleteFileEvent(el, fd, AE_READABLE);

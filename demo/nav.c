@@ -47,7 +47,7 @@ static void __nav_publish_velocity(int vx)
         return;
     }
 
-    lobj_write(publisher, &trace, sizeof(trace));
+    lobj_fx_write(publisher, &trace, sizeof(trace));
     lobj_derefer(publisher);
 }
 
