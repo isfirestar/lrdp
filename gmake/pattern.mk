@@ -107,7 +107,7 @@ all: .mkdir .invoke $(TAGS_DIR)$(TARGET)
 
 define build_obj_x
 $$(obj-$1): $2%.$1.o: %.$1  $(MAKEFILE_LIST)
-	@echo CC $$<
+	@echo -e "\033[32;36m CC $$< \033[0m"
 	@$(CC) -Wp,-MT,$$@ -Wp,-MMD,$$@.d -c $$< $(INCS) $(CFLAGS) $(CFLAGS_ADDON) $3 -o $$@
 
 endef
