@@ -82,7 +82,7 @@ static void __do_subscriberobj(lobj_pt lop)
     vsize[1] = sizeof(void *);
     vdata[2] = "PSUBSCRIBE";
     vsize[2] = strlen("PSUBSCRIBE");
-    for (i = 0; i < subobj->channels + 1; i++) {
+    for (i = 0; i < subobj->channels; i++) {
         vdata[i + 3] = subobj->channel[i].pattern;
         vsize[i + 3] = strlen(subobj->channel[i].pattern);
     }
