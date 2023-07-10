@@ -150,9 +150,13 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         // open tty file
         strncpy(ttyp->device, jtty->device, sizeof(ttyp->device) - 1);
         ttyp->fd = open(ttyp->device, O_RDWR | O_NOCTTY | O_NDELAY);
-        if (ttyp->fd < 0 || !isatty(ttyp->fd)) {
-            printf("open tty %s failed or not tty\n", ttyp->device);
+        if (ttyp->fd < 0) {
+            printf("open %s failed with code:%d\n", ttyp->device, errno);
             break;
+        }
+
+        if (!isatty(ttyp->fd)) {
+            printf("framework cannot confirm the open file is a tty,code:%d\n", errno);
         }
 
         // Get the current options for the port
