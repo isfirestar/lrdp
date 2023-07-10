@@ -227,8 +227,9 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
 {
     lobj_pt lop;
     const char *oname;
-    char holder[64];
+    char holder[64], loader[128];
     int64_t seq;
+    void (*on_loaded)(lobj_pt lop, void *ctx, size_t ctxsize);
 
     // use g_seq to control module init order
     seq =  __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
@@ -261,6 +262,14 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         }
     }
 
+    if (lop->handle && name) {
+        snprintf(loader, sizeof(loader), "%s_loaded", name);
+        on_loaded = ifos_dlsym(lop->handle, loader);
+        if (on_loaded) {
+            on_loaded(lop, lop->ctx, lop->ctxsize);
+        }
+    }
+
     return __lobj_attach_to_dict(lop);
 }
 
@@ -268,7 +277,8 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
 {
     lobj_pt lop;
     int64_t seq;
-    char holder[64];
+    char holder[64], loader[128];
+    void (*on_loaded)(lobj_pt lop, void *ctx, size_t ctxsize);
 
     if (!olop) {
         return NULL;
@@ -299,6 +309,14 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
         if (!lop->ctx) {
             lop->ctxsize = 0; // ignore context allocate failure
+        }
+    }
+
+    if (lop->handle && name) {
+        snprintf(loader, sizeof(loader), "%s_loaded", name);
+        on_loaded = ifos_dlsym(lop->handle, loader);
+        if (on_loaded) {
+            on_loaded(lop, lop->ctx, lop->ctxsize);
         }
     }
 
