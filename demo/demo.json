@@ -64,5 +64,19 @@
             "readproc" : "dep_tcp_on_received",
             "contextsize" : 0
         }
+    },
+
+    "epoll" : {
+        "myio" : {
+            "poolthreads" : 4,
+            "timeout" : 1000,
+            "timeoutproc" : "dep_on_epoll_timeout",
+            "errorproc" : "dep_on_error",
+            "rdhupproc" : "dep_on_rdhup",
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "readproc" : "dep_on_read",
+            "writeproc" : "dep_on_write",
+            "contextsize" : 0
+        }
     }
 }

@@ -9,6 +9,7 @@
 #include "rand.h"
 #include "monotonic.h"
 #include "ae.h"
+#include "epollobj.h"
 
 static void __lrdp_load_lwp()
 {
@@ -104,6 +105,20 @@ static void __lrd_load_raw()
     jconf_rawobj_free();
 }
 
+static void __lrd_load_epoll()
+{
+    jconf_epollobj_pt jepollcfg = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_epollobj_get_iterator(&count);
+    while (NULL != (iterator = jconf_epollobj_get(iterator, &jepollcfg))) {
+        epollobj_create(jepollcfg);
+    }
+    jconf_epollobj_free();
+
+}
+
 int main(int argc, char *argv[])
 {
     nsp_status_t status;
@@ -175,6 +190,9 @@ int main(int argc, char *argv[])
 
     /* load and create raw object */
     __lrd_load_raw();
+
+    /* load and create epoll object */
+    __lrd_load_epoll();
 
     /* post init completed message to entry module */
     mloop_post_init(mlop);

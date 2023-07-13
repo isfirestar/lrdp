@@ -82,6 +82,7 @@ static void __jconf_timer_load(cJSON *entry);
 static void __jconf_redis_server_load(cJSON *entry);
 static void __jconf_subscriber_load(cJSON *entry);
 static void __jconf_rawobj_load(cJSON *entry);
+static void __jconf_epollobj_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -146,6 +147,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_subscriber_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "imports")) {
                 __jconf_rawobj_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "epoll")) {
+                __jconf_epollobj_load(jcursor);
             } else {
                 ;
             }
@@ -932,6 +935,109 @@ void jconf_rawobj_free()
 
     list_for_each_safe(cursor, next, &g_jrawobj_head) {
         inner = container_of(cursor, struct jconf_rawobj_inner, ele_of_inner_rawobj);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        EPOLLOBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_epollobj_inner
+{
+    struct jconf_epollobj body;
+    struct list_head ele_of_inner_epollobj;
+};
+
+static struct list_head g_jepollobj_head = { &g_jepollobj_head, &g_jepollobj_head };
+static unsigned int jepollobj_count = 0;
+
+static void __jconf_epollobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jnext;
+    struct jconf_epollobj_inner *epollobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+            epollobj = ztrycalloc(sizeof(*epollobj));
+            if (!epollobj) {
+                break;
+            }
+
+            jnext = __jconf_load_head(jcursor, &epollobj->body.head);
+            while (jnext) {
+                if (jnext->type == cJSON_String) {
+                    if (0 == strcasecmp(jnext->string, "poolthreads") && jnext->type == cJSON_Number) {
+                        epollobj->body.poolthreads = jnext->valueint;
+                    } else if (0 == strcasecmp(jnext->string, "timeout") && jnext->type == cJSON_Number) {
+                        epollobj->body.timeout = jnext->valueint;
+                    } else if (0 == strcasecmp(jnext->string, "timeoutproc") && jnext->type == cJSON_String) {
+                        strncpy(epollobj->body.timeoutproc, jnext->valuestring, sizeof(epollobj->body.timeoutproc) - 1);
+                    } else if (0 == strcasecmp(jnext->string, "rdhupproc") && jnext->type == cJSON_String) {
+                        strncpy(epollobj->body.rdhupproc, jnext->valuestring, sizeof(epollobj->body.rdhupproc) - 1);
+                    } else if (0 == strcasecmp(jnext->string, "errorproc") && jnext->type == cJSON_String) {
+                        strncpy(epollobj->body.errorproc, jnext->valuestring, sizeof(epollobj->body.errorproc) - 1);
+                    }
+                }
+                jnext = jnext->next;
+            }
+
+            list_add_tail(&epollobj->ele_of_inner_epollobj, &g_jepollobj_head);
+            jepollobj_count++;
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_epollobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jepollobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jepollobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_epollobj_get(jconf_iterator_pt iterator, jconf_epollobj_pt *jepollobjs)
+{
+    struct list_head *cursor;
+    struct jconf_epollobj_inner *inner;
+
+    if (!iterator || !jepollobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jepollobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_epollobj_inner, ele_of_inner_epollobj);
+    *jepollobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_epollobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_epollobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jepollobj_head) {
+        inner = container_of(cursor, struct jconf_epollobj_inner, ele_of_inner_epollobj);
         list_del_init(cursor);
         zfree(inner);
     }

@@ -159,3 +159,21 @@ typedef struct jconf_rawobj jconf_rawobj_t, *jconf_rawobj_pt;
 extern jconf_iterator_pt jconf_rawobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_rawobj_get(jconf_iterator_pt iterator, jconf_rawobj_pt *jrawobj);
 extern void jconf_rawobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        EPOLLOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_epollobj
+{
+    struct jconf_head head;
+    unsigned int poolthreads;
+    unsigned int timeout;
+    JCONF_DECLARE_NORMAL_STRING(errorproc);
+    JCONF_DECLARE_NORMAL_STRING(rdhupproc);
+    JCONF_DECLARE_NORMAL_STRING(timeoutproc);
+};
+typedef struct jconf_epollobj jconf_epollobj_t, *jconf_epollobj_pt;
+
+extern jconf_iterator_pt jconf_epollobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_epollobj_get(jconf_iterator_pt iterator, jconf_epollobj_pt *jepollobj);
+extern void jconf_epollobj_free();
