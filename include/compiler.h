@@ -271,9 +271,11 @@ static __always_inline int logarithm2(int x)
 #endif
 #define EPSINON  0.000001
 #define is_float_zero(x) (((x) < EPSINON) && ((x) > -EPSINON))
-#define is_float_equal(n, m) ((fabs((n)-(m))) <= EPSINON )
-#define is_float_larger_than(n, m)  (((n) - (m)) > EPSINON)
-#define is_float_less_than(n, m)  is_float_larger_than(m, n)
+#define is_float_eq(n, m) ((fabs((n)-(m))) <= EPSINON )
+#define is_float_gt(n, m)  (((n) - (m)) > EPSINON)
+#define is_float_lt(n, m)  is_float_gt(m, n)
+#define is_float_ge(n, m)  (((n) - (m)) >= EPSINON)
+#define is_float_le(n, m)  is_float_ge(m, n)
 
 /* looking for the offset/size/posision of any field of structure */
 #if !defined containing_record
