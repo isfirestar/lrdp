@@ -657,6 +657,13 @@ static void __jconf_redis_server_load(cJSON *entry)
                     strncpy(redis_server->body.host, jnext->valuestring, sizeof(redis_server->body.host) - 1);
                 }
             }
+
+            if (jnext->type == cJSON_Number) {
+                if (0 == strcasecmp(jnext->string, "na")) {
+                    redis_server->body.na = jnext->valueint;
+                }
+            }
+
             jnext = jnext->next;
         } while (jnext);
 

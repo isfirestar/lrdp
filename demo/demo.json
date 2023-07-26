@@ -66,6 +66,21 @@
         }
     },
 
+    "redis-server" : {
+        "mypub" : {
+            "host" : "127.0.0.1:7777"
+        },
+
+        "mysub" : {
+            "host" : "127.0.0.1:7777"
+        },
+
+        "myget" : {
+            "host" : "127.0.0.1:7777",
+            "na" : 1
+        }
+    },
+
     "epoll" : {
         "myio" : {
             "poolthreads" : 4,

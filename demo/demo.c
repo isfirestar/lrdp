@@ -15,16 +15,29 @@ int dep_pre_init(lobj_pt lop, int argc, char **argv)
 
 void dep_post_init(lobj_pt lop)
 {
-    void *context;
-    size_t ctxsize;
+    lobj_pt lopr;
+    char response[128];
+    char *vdata[3];
+    size_t vsize[3];
 
-    context = NULL;
-    ctxsize = lobj_get_context(lop, &context);
-    if (!context) {
-        printf("[%d] dep_post_init context is NULL\n", ifos_gettid());
+    lopr = lobj_refer("myget");
+    if (!lopr) {
+        printf("myget not found\n");
         return;
     }
-    *(uint64_t *)context = getMonotonicMs();
+
+    memset(response, 0, sizeof(response));
+
+    vdata[0] = "get";
+    vsize[0] = 3;
+    vdata[1] = "hello";
+    vsize[1] = 5;
+    vdata[2] = response;
+    vsize[2] = sizeof(response);
+
+    lobj_fx_vread(lopr, 3, (void **)vdata, vsize);
+
+    lobj_derefer(lopr);
 }
 
 void dep_atexit(lobj_pt lop)

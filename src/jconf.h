@@ -116,6 +116,7 @@ struct jconf_redis_server
 {
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(host);
+    int na;
 };
 typedef struct jconf_redis_server jconf_redis_server_t, *jconf_redis_server_pt;
 

@@ -74,7 +74,7 @@ static void __lrdp_load_redisserver(aeEventLoop *el)
 
     iterator = jconf_redis_server_get_iterator(&count);
     while (NULL != (iterator = jconf_redis_server_get(iterator, &jredis_server_cfg))) {
-        redisobj_create(jredis_server_cfg, el);
+        (jredis_server_cfg->na) ? redisobj_create_na(jredis_server_cfg, el) : redisobj_create(jredis_server_cfg, el);
     }
     jconf_redis_server_free();
 }
@@ -92,7 +92,7 @@ static void __lrdp_load_subscriber()
     jconf_subscriber_free();
 }
 
-static void __lrd_load_raw()
+static void __lrdp_load_raw()
 {
     jconf_rawobj_pt jrawcfg = NULL;
     jconf_iterator_pt iterator;
@@ -105,7 +105,7 @@ static void __lrd_load_raw()
     jconf_rawobj_free();
 }
 
-static void __lrd_load_epoll()
+static void __lrdp_load_epoll()
 {
     jconf_epollobj_pt jepollcfg = NULL;
     jconf_iterator_pt iterator;
@@ -189,10 +189,10 @@ int main(int argc, char *argv[])
     __lrdp_load_subscriber();
 
     /* load and create raw object */
-    __lrd_load_raw();
+    __lrdp_load_raw();
 
     /* load and create epoll object */
-    __lrd_load_epoll();
+    __lrdp_load_epoll();
 
     /* post init completed message to entry module */
     mloop_post_init(mlop);
@@ -203,3 +203,4 @@ int main(int argc, char *argv[])
     lobj_ldestroy(mlop);
     return 0;
 }
+
