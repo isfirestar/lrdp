@@ -1,0 +1,27 @@
+{
+    "mainloop" : {
+        "module" : "/mnt/d/git/my/lrdp/gmake/libmesgqc.so",
+        "contextsize" : 128
+    },
+
+    "timers" : {
+        "sender" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libmesgqc.so",
+            "interval" : 500,
+            "timerproc" : "mq_sender_proc",
+            "contextsize" : 16
+        }
+    },
+
+    "mesgq" : {
+        "myq" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libmesgqc.so",
+            "maxmsg" : 10,
+            "msgsize" : 100,
+            "contextsize" : 0,
+            "mqname" : "/mqtest",
+            "na" : 0,
+            "method" : 1
+        }
+    }
+}

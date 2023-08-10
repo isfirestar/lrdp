@@ -8,7 +8,7 @@
 struct mainloop
 {
     int (*preinitproc)(lobj_pt lop, int argc, char **argv);
-    void (*postinitproc)(lobj_pt lop);
+    void (*postinitproc)(lobj_pt lop, int argc, char **argv);
 };
 typedef struct mainloop mainloop_t, *mainloop_pt;
 
@@ -39,7 +39,7 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     }
     mloop = lobj_body(mainloop_pt, lop);
     // freeproc cannot be covered
-    lobj_cover_fx(lop, NULL, jentry->head.vwriteproc, jentry->head.writeproc, jentry->head.readproc, jentry->head.vreadproc);
+    lobj_cover_fx(lop, NULL, jentry->head.vwriteproc, jentry->head.writeproc, jentry->head.readproc, jentry->head.vreadproc, NULL);
 
     // load all entry procedure which defined in json configure file, ignore failed
     mloop->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
@@ -63,7 +63,7 @@ int mloop_pre_init(lobj_pt lop,int argc, char **argv)
     return 0;
 }
 
-void mloop_post_init(lobj_pt lop)
+void mloop_post_init(lobj_pt lop, int argc, char **argv)
 {
     mainloop_pt mloop;
 
@@ -73,6 +73,6 @@ void mloop_post_init(lobj_pt lop)
     mloop = lobj_body(mainloop_pt, lop);
 
     if (mloop->postinitproc) {
-        mloop->postinitproc(lop);
+        mloop->postinitproc(lop, argc, argv);
     }
 }

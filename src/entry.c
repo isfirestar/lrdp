@@ -10,6 +10,7 @@
 #include "monotonic.h"
 #include "ae.h"
 #include "epollobj.h"
+#include "mesgqobj.h"
 
 static void __lrdp_load_lwp()
 {
@@ -116,7 +117,19 @@ static void __lrdp_load_epoll()
         epollobj_create(jepollcfg);
     }
     jconf_epollobj_free();
+}
 
+static void __lrdp_load_mesgq(aeEventLoop *el)
+{
+    jconf_mesgqobj_pt jmesgq = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_mesgqobj_get_iterator(&count);
+    while (NULL != (iterator = jconf_mesgqobj_get(iterator, &jmesgq))) {
+        mesgqobj_create(jmesgq, el);
+    }
+    jconf_mesgqobj_free();
 }
 
 int main(int argc, char *argv[])
@@ -194,8 +207,11 @@ int main(int argc, char *argv[])
     /* load and create epoll object */
     __lrdp_load_epoll();
 
+    /* load mesgq object */
+    __lrdp_load_mesgq(el);
+
     /* post init completed message to entry module */
-    mloop_post_init(mlop);
+    mloop_post_init(mlop, argc, argv);
 
     /* start main loop */
     aeMain(el);

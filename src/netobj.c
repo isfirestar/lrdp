@@ -279,7 +279,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
         return;
     }
     netp = lobj_body(struct netobj *, lop);
-    lobj_cover_fx(lop, jnetcfg->head.freeproc, jnetcfg->head.writeproc, jnetcfg->head.vwriteproc, jnetcfg->head.readproc, jnetcfg->head.vreadproc);
+    lobj_cover_fx(lop, jnetcfg->head.freeproc, jnetcfg->head.writeproc, jnetcfg->head.vwriteproc, jnetcfg->head.readproc, jnetcfg->head.vreadproc, NULL);
 
     do {
         /* determine protocol type and init framework */

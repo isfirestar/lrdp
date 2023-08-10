@@ -323,7 +323,7 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
     return __lobj_attach_to_dict(lop);
 }
 
-void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc)
+void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc, const char *recvdataproc)
 {
     if (!lop) {
         return;
@@ -356,6 +356,11 @@ void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, con
     if (vreadproc) {
         if (0 != vreadproc[0]) {
             lop->fx.vreadproc = (vread_pfn)ifos_dlsym(lop->handle, vreadproc);
+        }
+    }
+    if (recvdataproc) {
+        if (0 != recvdataproc[0]) {
+            lop->fx.recvdataproc = (recvdata_pfn)ifos_dlsym(lop->handle, recvdataproc);
         }
     }
 }
@@ -600,6 +605,19 @@ int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n)
     }
 
     return lop->fx.vreadproc(lop, elements, data, n);
+}
+
+void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n)
+{
+    if (!lop || !data || !n) {
+        return;
+    }
+
+    if (!lop->fx.recvdataproc) {
+        return;
+    }
+
+    lop->fx.recvdataproc(lop, data, n);
 }
 
 /* helper function impls */

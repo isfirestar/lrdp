@@ -139,3 +139,18 @@ void dep_tcp_on_connected(lobj_pt lop)
     // send a simple packet to server
     lobj_fx_write(lop, "hello", 5);
 }
+
+void dep_mq_recv_data(lobj_pt lop, void *data, size_t size)
+{
+    char *p;
+
+    p = ztrymalloc(size + 1);
+    if (!p) {
+        return;
+    }
+    memcpy(p, data, size);
+    p[size] = '\0';
+
+    printf("[%d] dep_mq_recv_data : %s\n", ifos_gettid(), p);
+    zfree(p);
+}

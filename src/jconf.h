@@ -16,6 +16,7 @@ struct jconf_head
     JCONF_DECLARE_NORMAL_STRING(vreadproc);
     JCONF_DECLARE_NORMAL_STRING(writeproc);
     JCONF_DECLARE_NORMAL_STRING(vwriteproc);
+    JCONF_DECLARE_NORMAL_STRING(recvdataproc);
     unsigned int ctxsize;
 };
 
@@ -178,3 +179,21 @@ typedef struct jconf_epollobj jconf_epollobj_t, *jconf_epollobj_pt;
 extern jconf_iterator_pt jconf_epollobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_epollobj_get(jconf_iterator_pt iterator, jconf_epollobj_pt *jepollobj);
 extern void jconf_epollobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        MESGOBJS IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_mesgqobj
+{
+    struct jconf_head head;
+    unsigned int maxmsg;
+    unsigned int msgsize;
+    unsigned int method;
+    int na;
+    JCONF_DECLARE_NORMAL_STRING(mqname);
+};
+typedef struct jconf_mesgqobj jconf_mesgqobj_t, *jconf_mesgqobj_pt;
+
+extern jconf_iterator_pt jconf_mesgqobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_mesgqobj_get(jconf_iterator_pt iterator, jconf_mesgqobj_pt *jmesgqobj);
+extern void jconf_mesgqobj_free();

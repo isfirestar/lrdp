@@ -137,7 +137,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         return;
     }
     subobj = lobj_body(struct subscriberobj *, sublop);
-    lobj_cover_fx(sublop, NULL, jsubcfg->head.writeproc, jsubcfg->head.vwriteproc, jsubcfg->head.readproc, jsubcfg->head.vreadproc);
+    lobj_cover_fx(sublop, NULL, jsubcfg->head.writeproc, jsubcfg->head.vwriteproc, jsubcfg->head.readproc, jsubcfg->head.vreadproc, NULL);
 
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created

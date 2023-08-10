@@ -144,7 +144,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
     }
     ttyp = lobj_body(struct ttyobj *, lop);
     // free and write proc can not be covered
-    lobj_cover_fx(lop, NULL, NULL, jtty->head.vwriteproc, jtty->head.readproc, jtty->head.vreadproc);
+    lobj_cover_fx(lop, NULL, NULL, jtty->head.vwriteproc, jtty->head.readproc, jtty->head.vreadproc, NULL);
 
     do {
         // open tty file

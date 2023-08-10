@@ -34,6 +34,8 @@ static cJSON *__jconf_load_head(cJSON *jcursor, struct jconf_head *cfhead)
             strncpy(cfhead->writeproc, jnext->valuestring, sizeof(cfhead->writeproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "vwriteproc") && jnext->type == cJSON_String) {
             strncpy(cfhead->vwriteproc, jnext->valuestring, sizeof(cfhead->vwriteproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "recvdataproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->recvdataproc, jnext->valuestring, sizeof(cfhead->recvdataproc) - 1);
         } else if ( (0 == strcasecmp(jnext->string, "ctxsize") || 0 == strcasecmp(jnext->string, "contextsize") ) && jnext->type == cJSON_Number) {
             cfhead->ctxsize = jnext->valueint;
         } else {
@@ -83,6 +85,7 @@ static void __jconf_redis_server_load(cJSON *entry);
 static void __jconf_subscriber_load(cJSON *entry);
 static void __jconf_rawobj_load(cJSON *entry);
 static void __jconf_epollobj_load(cJSON *entry);
+static void __jconf_mesgqobj_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -149,6 +152,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_rawobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "epoll")) {
                 __jconf_epollobj_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "mesgq")) {
+                __jconf_mesgqobj_load(jcursor);
             } else {
                 ;
             }
@@ -1045,6 +1050,109 @@ void jconf_epollobj_free()
 
     list_for_each_safe(cursor, next, &g_jepollobj_head) {
         inner = container_of(cursor, struct jconf_epollobj_inner, ele_of_inner_epollobj);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        MESGQOBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_mesgqobj_inner
+{
+    struct jconf_mesgqobj body;
+    struct list_head ele_of_inner_mesgqobj;
+};
+
+static struct list_head g_jmesgqobj_head = { &g_jmesgqobj_head, &g_jmesgqobj_head };
+static unsigned int jmesgqobj_count = 0;
+
+static void __jconf_mesgqobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jnext;
+    struct jconf_mesgqobj_inner *mesgqobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+            mesgqobj = ztrycalloc(sizeof(*mesgqobj));
+            if (!mesgqobj) {
+                break;
+            }
+
+            jnext = __jconf_load_head(jcursor, &mesgqobj->body.head);
+            while (jnext) {
+                if (0 == strcasecmp(jnext->string, "maxmsg") && jnext->type == cJSON_Number) {
+                    mesgqobj->body.maxmsg = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "msgsize") && jnext->type == cJSON_Number) {
+                    mesgqobj->body.msgsize = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "method") && jnext->type == cJSON_Number) {
+                    mesgqobj->body.method = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "na") && jnext->type == cJSON_Number) {
+                    mesgqobj->body.na = jnext->valueint;
+                } else if (0 == strcasecmp(jnext->string, "mqname") && jnext->type == cJSON_String) {
+                    strncpy(mesgqobj->body.mqname, jnext->valuestring, sizeof(mesgqobj->body.mqname) - 1);
+                } else {
+                    ;
+                }
+                jnext = jnext->next;
+            }
+
+            list_add_tail(&mesgqobj->ele_of_inner_mesgqobj, &g_jmesgqobj_head);
+            jmesgqobj_count++;
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_mesgqobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jmesgqobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jmesgqobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_mesgqobj_get(jconf_iterator_pt iterator, jconf_mesgqobj_pt *jmesgqobjs)
+{
+    struct list_head *cursor;
+    struct jconf_mesgqobj_inner *inner;
+
+    if (!iterator || !jmesgqobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jmesgqobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_mesgqobj_inner, ele_of_inner_mesgqobj);
+    *jmesgqobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_mesgqobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_mesgqobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jmesgqobj_head) {
+        inner = container_of(cursor, struct jconf_mesgqobj_inner, ele_of_inner_mesgqobj);
         list_del_init(cursor);
         zfree(inner);
     }

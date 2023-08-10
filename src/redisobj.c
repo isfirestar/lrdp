@@ -172,7 +172,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
     }
     redis_server_obj = lobj_body(struct redisobj *, lop);
     // freeproc and vwrite proc can not be covered
-    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, jredis_server_cfg->head.vreadproc);
+    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, jredis_server_cfg->head.vreadproc, NULL);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_obj->host);
@@ -220,7 +220,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
     }
     redis_server_objna = lobj_body(struct redisobj_na *, lop);
     // freeproc and vwrite proc can not be covered
-    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, NULL);
+    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, NULL, NULL);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_objna->host);

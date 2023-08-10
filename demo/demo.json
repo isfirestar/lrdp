@@ -93,5 +93,18 @@
             "writeproc" : "dep_on_write",
             "contextsize" : 0
         }
+    },
+
+    "mesgq" : {
+        "myq" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "maxmsg" : 10,
+            "msgsize" : 100,
+            "contextsize" : 0,
+            "recvdataproc" : "dep_mq_recv_data",
+            "mqname" : "/mqtest",
+            "na" : 0,
+            "method" : 4
+        }
     }
 }

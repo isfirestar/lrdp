@@ -17,8 +17,17 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
+struct lobj_event
+{
+    void (*on_read)(lobj_pt lop, const void *data, size_t n);
+    void (*on_write)(lobj_pt lop, const void *data, size_t n);
+    void (*on_error)(lobj_pt lop, int errcode);
+};
+typedef struct lobj_event lobj_event_t, *lobj_event_pt;
+
 typedef void (*freeproc_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
+typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 typedef int (*read_pfn)(lobj_pt lop, void *data, size_t n);
 typedef int (*vread_pfn)(lobj_pt lop, int elements, void **data, size_t *n);
@@ -30,6 +39,7 @@ struct lobj_fx
     vwrite_pfn vwriteproc;
     read_pfn readproc;
     vread_pfn vreadproc;
+    recvdata_pfn recvdataproc;
 };
 
 extern nsp_status_t lobj_init();
@@ -38,7 +48,7 @@ extern void lobj_uninit();
 /* proce for create/destroy/destroy_all */
 extern lobj_pt lobj_create(const char *name, const char *module, size_t bodysize, size_t ctxsize, const struct lobj_fx *fx);
 extern lobj_pt lobj_dup(const char *name, const lobj_pt olop);
-extern void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc);
+extern void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc, const char *recvdataproc);
 extern void lobj_destroy(const char *name);
 extern void lobj_qdestroy(lobj_seq_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
@@ -62,6 +72,7 @@ extern int lobj_fx_write(lobj_pt lop, const void *data, size_t n);
 extern int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 extern int lobj_fx_read(lobj_pt lop, void *data, size_t n);
 extern int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n);
+extern void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n);
 
 /* object helper function impls */
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);

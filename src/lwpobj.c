@@ -65,7 +65,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
         return posix__makeerror(ENOMEM);
     }
     lwp = lobj_body(struct lwp_item *, lop);
-    lobj_cover_fx(lop, jlwpcfg->head.freeproc, jlwpcfg->head.writeproc, jlwpcfg->head.vwriteproc, jlwpcfg->head.readproc, jlwpcfg->head.vreadproc);
+    lobj_cover_fx(lop, jlwpcfg->head.freeproc, jlwpcfg->head.writeproc, jlwpcfg->head.vwriteproc, jlwpcfg->head.readproc, jlwpcfg->head.vreadproc, NULL);
 
     do {
         lwp->execproc = lobj_dlsym(lop, jlwpcfg->execproc);

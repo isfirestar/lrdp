@@ -52,7 +52,7 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
         return;
     }
     timer = lobj_body(struct timerobj *, lop);
-    lobj_cover_fx(lop, jtimer->head.freeproc, jtimer->head.writeproc, jtimer->head.vwriteproc, jtimer->head.readproc, jtimer->head.vreadproc);
+    lobj_cover_fx(lop, jtimer->head.freeproc, jtimer->head.writeproc, jtimer->head.vwriteproc, jtimer->head.readproc, jtimer->head.vreadproc, NULL);
     timer->el = el;
     timer->timerproc = lobj_dlsym(lop, jtimer->timerproc);
     timer->interval = jtimer->interval;
