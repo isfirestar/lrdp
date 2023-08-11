@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
     __lrdp_load_mesgq(el);
 
     /* post init completed message to entry module */
-    mloop_post_init(mlop, argc, argv);
+    mloop_post_init(mlop, argc - 2, argv + 2);
 
     /* start main loop */
     aeMain(el);
