@@ -6,6 +6,7 @@
 struct mesgq_item
 {
     mqd_t fd;
+    aeEventLoop *el;
     char mqname[64];
     unsigned int maxmsg;
     unsigned int msgsize;
@@ -19,6 +20,9 @@ static void __mesgq_free(lobj_pt lop, void *context, size_t ctxsize)
 
     mesgq = lobj_body(struct mesgq_item *, lop);
     if (mesgq->fd) {
+        if (!mesgq->na) {
+            aeDeleteFileEvent(mesgq->el, mesgq->fd, AE_READABLE);
+        }
         mesgq_close(mesgq->fd);
     }
 }
@@ -111,11 +115,13 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         lobj_cover_fx(lop, NULL, NULL, jmesgq->head.vwriteproc, NULL, jmesgq->head.vreadproc, jmesgq->head.recvdataproc);
 
         // set nonblock
-        if (!jmesgq->na && recvdataproc) {
+        if (!jmesgq->na && el) {
             status = mesgq_set_nonblocking(mesgq->fd);
             if (!NSP_SUCCESS(status)) {
                 break;
             }
+            // save ae target
+            mesgq->el = el;
             // attach to ae
             aeCreateFileEvent(el, mesgq->fd, AE_READABLE, &__mesgq_ae_read, lop);
         }
