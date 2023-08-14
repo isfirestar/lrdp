@@ -138,8 +138,8 @@ detach:
 .invoke:
 	@for i in $(INVOKE); \
 	do \
-	if [ -f $$i ]; then make -f $$i; fi;\
-	if [ -d $$i ]; then make -C $$i; fi \
+	if [ -f $$i ]; then $(MAKE) -f $$i $$@; fi;\
+	if [ -d $$i ]; then $(MAKE) -C $$i $$@; fi \
 	done
 
 clean:
@@ -147,8 +147,8 @@ clean:
 	@rm -fr $(BUILD_DIR)
 	@for i in $(INVOKE); \
 	do \
-	if [ -f $$i ]; then make -f $$i clean; fi;\
-	if [ -d $$i ]; then make -C $$i clean; fi \
+	if [ -f $$i ]; then $(MAKE) -f $$i clean; fi;\
+	if [ -d $$i ]; then $(MAKE) -C $$i clean; fi \
 	done
 
 .PHONY : $(PHONY)
