@@ -107,6 +107,7 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         // open message queue
         status = mesgq_open(jmesgq->mqname, jmesgq->method, jmesgq->maxmsg, jmesgq->msgsize, &mesgq->fd);
         if (!NSP_SUCCESS(status)) {
+            printf("failed on open named messageq [%s], error status:%ld\n", jmesgq->mqname, status);
             break;
         }
 
@@ -118,6 +119,7 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         if (!jmesgq->na && el) {
             status = mesgq_set_nonblocking(mesgq->fd);
             if (!NSP_SUCCESS(status)) {
+                printf("failed mark named mq [%s] to non-blocking, error status:%ld\n", jmesgq->mqname, status);
                 break;
             }
             // save ae target
