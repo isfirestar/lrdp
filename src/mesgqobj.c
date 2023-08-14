@@ -89,7 +89,6 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
     lobj_pt lop;
     struct mesgq_item *mesgq;
     nsp_status_t status;
-    recvdata_pfn recvdataproc;
 
     lop = lobj_create(jmesgq->head.name, jmesgq->head.module, sizeof(struct mesgq_item), jmesgq->head.ctxsize, &fx);
     if (!lop) {
@@ -112,7 +111,6 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         }
 
         // freeproc and write proc can not be covered
-        recvdataproc = lobj_dlsym(lop, jmesgq->head.recvdataproc);
         lobj_cover_fx(lop, NULL, NULL, jmesgq->head.vwriteproc, NULL, jmesgq->head.vreadproc, jmesgq->head.recvdataproc);
 
         // set nonblock
@@ -133,3 +131,4 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
     lobj_ldestroy(lop);
     return NULL;
 }
+
