@@ -24,6 +24,8 @@ static cJSON *__jconf_load_head(cJSON *jcursor, struct jconf_head *cfhead)
     while (jnext) {
         if (0 == strcasecmp(jnext->string, "module") && jnext->type == cJSON_String) {
             strncpy(cfhead->module, jnext->valuestring, sizeof(cfhead->module) - 1);
+        } else if (0 == strcasecmp(jnext->string, "touchproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->touchproc, jnext->valuestring, sizeof(cfhead->touchproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "freeproc") && jnext->type == cJSON_String) {
             strncpy(cfhead->freeproc, jnext->valuestring, sizeof(cfhead->freeproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "readproc") && jnext->type == cJSON_String) {
