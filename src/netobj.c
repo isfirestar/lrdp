@@ -259,7 +259,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
 {
     lobj_pt lop;
     struct lobj_fx fx = { NULL };
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct netobj *netp;
     nsp_status_t status;
     lobj_seq_t seq;
