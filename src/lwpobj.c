@@ -48,24 +48,26 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     nsp_status_t status;
     struct lwp_item *lwp;
     lobj_pt lop;
-    struct lobj_fx fx = {
-        .freeproc = NULL,
-        .writeproc = NULL,
-        .vwriteproc = NULL,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx_sym sym;
 
     if (!jlwpcfg) {
         return posix__makeerror(EINVAL);
     }
 
-    lop = lobj_create(jlwpcfg->head.name, jlwpcfg->head.module, sizeof(struct lwp_item), jlwpcfg->head.ctxsize, &fx);
+    lop = lobj_create(jlwpcfg->head.name, jlwpcfg->head.module, sizeof(struct lwp_item), jlwpcfg->head.ctxsize, NULL);
     if (!lop) {
         return posix__makeerror(ENOMEM);
     }
     lwp = lobj_body(struct lwp_item *, lop);
-    lobj_cover_fx(lop, jlwpcfg->head.freeproc, jlwpcfg->head.writeproc, jlwpcfg->head.vwriteproc, jlwpcfg->head.readproc, jlwpcfg->head.vreadproc, NULL);
+
+    sym.freeproc_sym = jlwpcfg->head.freeproc;
+    sym.writeproc_sym = jlwpcfg->head.writeproc;
+    sym.vwriteproc_sym = jlwpcfg->head.vwriteproc;
+    sym.readproc_sym = jlwpcfg->head.readproc;
+    sym.vreadproc_sym = jlwpcfg->head.vreadproc;
+    sym.recvdataproc_sym = jlwpcfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jlwpcfg->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     do {
         lwp->execproc = lobj_dlsym(lop, jlwpcfg->execproc);
