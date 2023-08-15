@@ -544,6 +544,39 @@ void lobj_derefer(lobj_pt lop)
     __lobj_finalize(ref);
 }
 
+void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
+{
+    if (!lop || !sym) {
+        return;
+    }
+
+    if (!lop->handle) {
+        return;
+    }
+
+    if (!lop->fx.freeproc && sym->freeproc_sym) {
+        lop->fx.freeproc = (freeproc_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
+    }
+    if (!lop->fx.writeproc && sym->writeproc_sym) {
+        lop->fx.writeproc = (write_pfn)ifos_dlsym(lop->handle, sym->writeproc_sym);
+    }
+    if (!lop->fx.vwriteproc && sym->vwriteproc_sym) {
+        lop->fx.vwriteproc = (vwrite_pfn)ifos_dlsym(lop->handle, sym->vwriteproc_sym);
+    }
+    if (!lop->fx.readproc && sym->readproc_sym) {
+        lop->fx.readproc = (read_pfn)ifos_dlsym(lop->handle, sym->readproc_sym);
+    }
+    if (!lop->fx.vreadproc && sym->vreadproc_sym) {
+        lop->fx.vreadproc = (vread_pfn)ifos_dlsym(lop->handle, sym->vreadproc_sym);
+    }
+    if (!lop->fx.recvdataproc && sym->recvdataproc_sym) {
+        lop->fx.recvdataproc = (recvdata_pfn)ifos_dlsym(lop->handle, sym->recvdataproc_sym);
+    }
+    if (!lop->fx.rawinvokeproc && sym->rawinvokeproc_sym) {
+        lop->fx.rawinvokeproc = (rawinvokeproc_pfn)ifos_dlsym(lop->handle, sym->rawinvokeproc_sym);
+    }
+}
+
 void lobj_fx_free(lobj_pt lop)
 {
     if (!lop) {
