@@ -17,14 +17,6 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
-struct lobj_event
-{
-    void (*on_read)(lobj_pt lop, const void *data, size_t n);
-    void (*on_write)(lobj_pt lop, const void *data, size_t n);
-    void (*on_error)(lobj_pt lop, int errcode);
-};
-typedef struct lobj_event lobj_event_t, *lobj_event_pt;
-
 typedef void (*freeproc_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
