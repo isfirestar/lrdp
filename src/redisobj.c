@@ -162,6 +162,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         .readproc = NULL,
         .vreadproc = NULL,
     };
+    struct lobj_fx_sym sym;
     lobj_pt lop;
     struct redisobj *redis_server_obj;
     nsp_status_t status;
@@ -171,8 +172,16 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         return;
     }
     redis_server_obj = lobj_body(struct redisobj *, lop);
+    
     // freeproc and vwrite proc can not be covered
-    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, jredis_server_cfg->head.vreadproc, NULL);
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = jredis_server_cfg->head.writeproc;
+    sym.vwriteproc_sym = NULL;
+    sym.readproc_sym = jredis_server_cfg->head.readproc;
+    sym.vreadproc_sym = jredis_server_cfg->head.vreadproc;
+    sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_obj->host);
@@ -210,6 +219,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
         .readproc = NULL,
         .vreadproc = &__redisobj_vread_na,
     };
+    struct lobj_fx_sym sym;
     lobj_pt lop;
     struct redisobj_na *redis_server_objna;
     nsp_status_t status;
@@ -219,8 +229,16 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
         return;
     }
     redis_server_objna = lobj_body(struct redisobj_na *, lop);
-    // freeproc and vwrite proc can not be covered
-    lobj_cover_fx(lop, NULL, jredis_server_cfg->head.writeproc, NULL, jredis_server_cfg->head.readproc, NULL, NULL);
+    
+    // freeproc/vwrite/vread proc can not be covered
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = jredis_server_cfg->head.writeproc;
+    sym.vwriteproc_sym = NULL;
+    sym.readproc_sym = jredis_server_cfg->head.readproc;
+    sym.vreadproc_sym = NULL;
+    sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_objna->host);
