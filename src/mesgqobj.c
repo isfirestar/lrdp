@@ -102,7 +102,7 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
     lobj_pt lop;
     struct mesgq_item *mesgq;
     nsp_status_t status;
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
 
     fx.freeproc = &__mesgq_free;
