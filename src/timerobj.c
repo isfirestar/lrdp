@@ -25,7 +25,7 @@ static int __timerobj_proc(struct aeEventLoop *eventLoop, long long id, void *cl
     return timer->interval;
 }
 
-static void __timerobj_atexit(struct lobj *lop)
+static void __timerobj_atexit(lobj_pt lop, void *ctx, size_t ctxsize)
 {
     struct timerobj *timer;
 
@@ -38,21 +38,26 @@ static void __timerobj_atexit(struct lobj *lop)
 void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
 {
     lobj_pt lop;
-    struct lobj_fx fx = {
-        .freeproc = NULL,
-        .writeproc = NULL,
-        .vwriteproc = NULL,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx fx = { NULL };
+    struct lobj_fx_sym sym;
     struct timerobj *timer;
 
+    fx.freeproc = &__timerobj_atexit;
     lop = lobj_create(jtimer->head.name, jtimer->head.module, sizeof(struct timerobj), jtimer->head.ctxsize, &fx);
     if (!lop) {
         return;
     }
     timer = lobj_body(struct timerobj *, lop);
-    lobj_cover_fx(lop, jtimer->head.freeproc, jtimer->head.writeproc, jtimer->head.vwriteproc, jtimer->head.readproc, jtimer->head.vreadproc, NULL);
+    
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = jtimer->head.writeproc;
+    sym.vwriteproc_sym = jtimer->head.vwriteproc;
+    sym.readproc_sym = jtimer->head.readproc;
+    sym.vreadproc_sym = jtimer->head.vreadproc;
+    sym.recvdataproc_sym = jtimer->head.recvdataproc;
+    sym.rawinvokeproc_sym = jtimer->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
+    
     timer->el = el;
     timer->timerproc = lobj_dlsym(lop, jtimer->timerproc);
     timer->interval = jtimer->interval;
