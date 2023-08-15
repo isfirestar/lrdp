@@ -21,7 +21,7 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
 {
     lobj_pt lop;
     mainloop_pt mloop;
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
 
     if (!jentry) {
