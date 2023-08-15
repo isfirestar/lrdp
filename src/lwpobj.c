@@ -12,6 +12,18 @@ struct lwp_item
     unsigned int affinity;
 };
 
+static void __lwp_free(lobj_pt lop, void *ctx, size_t ctxsize)
+{
+    struct lwp_item *lwp;
+    void *retval;
+
+    lwp = lobj_body(struct lwp_item *, lop);
+
+    if (lwp_joinable(&lwp->thread)) {
+        lwp_join(&lwp->thread, &retval);
+    }
+}
+
 static void *__lwp_start_rtn(void *parameter)
 {
     lobj_pt lop;
@@ -49,12 +61,14 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     struct lwp_item *lwp;
     lobj_pt lop;
     struct lobj_fx_sym sym;
+    struct lobj_fx fx = { NULL };
 
     if (!jlwpcfg) {
         return posix__makeerror(EINVAL);
     }
 
-    lop = lobj_create(jlwpcfg->head.name, jlwpcfg->head.module, sizeof(struct lwp_item), jlwpcfg->head.ctxsize, NULL);
+    fx.freeproc = &__lwp_free;
+    lop = lobj_create(jlwpcfg->head.name, jlwpcfg->head.module, sizeof(struct lwp_item), jlwpcfg->head.ctxsize, &fx);
     if (!lop) {
         return posix__makeerror(ENOMEM);
     }
