@@ -36,13 +36,13 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     mloop = lobj_body(mainloop_pt, lop);
 
     // freeproc can not covert
-    sym.freeproc_sym = jlwpcfg->head.freeproc;
-    sym.writeproc_sym = jlwpcfg->head.writeproc;
-    sym.vwriteproc_sym = jlwpcfg->head.vwriteproc;
-    sym.readproc_sym = jlwpcfg->head.readproc;
-    sym.vreadproc_sym = jlwpcfg->head.vreadproc;
-    sym.recvdataproc_sym = jlwpcfg->head.recvdataproc;
-    sym.rawinvokeproc_sym = jlwpcfg->head.rawinvokeproc;
+    sym.freeproc_sym = jentry->head.freeproc;
+    sym.writeproc_sym = jentry->head.writeproc;
+    sym.vwriteproc_sym = jentry->head.vwriteproc;
+    sym.readproc_sym = jentry->head.readproc;
+    sym.vreadproc_sym = jentry->head.vreadproc;
+    sym.recvdataproc_sym = jentry->head.recvdataproc;
+    sym.rawinvokeproc_sym = jentry->head.rawinvokeproc;
     lobj_fx_load(lop, &sym);
 
     // load all entry procedure which defined in json configure file, ignore failed
