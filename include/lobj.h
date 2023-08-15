@@ -17,6 +17,7 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
+typedef void (*touch_pfn)(lobj_pt lop);
 typedef void (*free_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
@@ -27,6 +28,7 @@ typedef int (*rawinvoke_pfn)(lobj_pt lop, const void *datain, size_t nin, void *
 
 struct lobj_fx
 {
+    touch_pfn touchproc;
     free_pfn freeproc;
     write_pfn writeproc;
     vwrite_pfn vwriteproc;
@@ -38,6 +40,7 @@ struct lobj_fx
 
 struct lobj_fx_sym
 {
+    char *touchproc_sym;
     char *freeproc_sym;
     char *writeproc_sym;
     char *vwriteproc_sym;
@@ -72,6 +75,7 @@ extern void lobj_derefer(lobj_pt lop);
  *              [3,n] are the redis command arguments
  */
 extern void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym);
+extern void lobj_fx_touch(lobj_pt lop, void *userptr, size_t userptrlen);
 extern void lobj_fx_free(lobj_pt lop);
 extern int lobj_fx_write(lobj_pt lop, const void *data, size_t n);
 extern int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
