@@ -502,7 +502,7 @@ void lobj_derefer(lobj_pt lop)
     __lobj_finalize(ref);
 }
 
-void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
+void lobj_fx_cover(lobj_pt lop, const struct lobj_fx_sym *sym)
 {
     if (!lop || !sym) {
         return;

@@ -172,8 +172,9 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         return;
     }
     redis_server_obj = lobj_body(struct redisobj *, lop);
-    
+
     // freeproc and vwrite proc can not be covered
+    sym.touchproc_sym = jredis_server_cfg->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = jredis_server_cfg->head.writeproc;
     sym.vwriteproc_sym = NULL;
@@ -181,7 +182,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
     sym.vreadproc_sym = jredis_server_cfg->head.vreadproc;
     sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
     sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_obj->host);
@@ -229,8 +230,9 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
         return;
     }
     redis_server_objna = lobj_body(struct redisobj_na *, lop);
-    
+
     // freeproc/vwrite/vread proc can not be covered
+    sym.touchproc_sym = jredis_server_cfg->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = jredis_server_cfg->head.writeproc;
     sym.vwriteproc_sym = NULL;
@@ -238,7 +240,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
     sym.vreadproc_sym = NULL;
     sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
     sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_objna->host);

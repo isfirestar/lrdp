@@ -154,8 +154,9 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         return NULL;
     }
     ttyp = lobj_body(struct ttyobj *, lop);
-    
+
     // free and write proc can not be covered
+    sym.touchproc_sym = jtty->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = NULL;
     sym.vwriteproc_sym =  jtty->head.vwriteproc;
@@ -163,7 +164,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
     sym.vreadproc_sym = jtty->head.vreadproc;
     sym.recvdataproc_sym = jtty->head.recvdataproc;
     sym.rawinvokeproc_sym = jtty->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     do {
         // open tty file

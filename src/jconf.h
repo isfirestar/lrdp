@@ -199,3 +199,17 @@ typedef struct jconf_mesgqobj jconf_mesgqobj_t, *jconf_mesgqobj_pt;
 extern jconf_iterator_pt jconf_mesgqobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_mesgqobj_get(jconf_iterator_pt iterator, jconf_mesgqobj_pt *jmesgqobj);
 extern void jconf_mesgqobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        AEOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_aeobj
+{
+    struct jconf_head head;
+    int setsize;
+};
+typedef struct jconf_aeobj jconf_aeobj_t, *jconf_aeobj_pt;
+
+extern jconf_iterator_pt jconf_aeobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_aeobj_get(jconf_iterator_pt iterator, jconf_aeobj_pt *jaeobj);
+extern void jconf_aeobj_free();

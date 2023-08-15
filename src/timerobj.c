@@ -48,7 +48,8 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
         return;
     }
     timer = lobj_body(struct timerobj *, lop);
-    
+
+    sym.touchproc_sym = jtimer->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = jtimer->head.writeproc;
     sym.vwriteproc_sym = jtimer->head.vwriteproc;
@@ -56,8 +57,8 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
     sym.vreadproc_sym = jtimer->head.vreadproc;
     sym.recvdataproc_sym = jtimer->head.recvdataproc;
     sym.rawinvokeproc_sym = jtimer->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
-    
+    lobj_fx_cover(lop, &sym);
+
     timer->el = el;
     timer->timerproc = lobj_dlsym(lop, jtimer->timerproc);
     timer->interval = jtimer->interval;

@@ -130,6 +130,7 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         }
 
         // free/read/write proc can not be covered
+        sym.touchproc_sym = jmesgq->head.touchproc;
         sym.freeproc_sym = NULL;
         sym.writeproc_sym = NULL;
         sym.vwriteproc_sym = NULL;
@@ -137,7 +138,7 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         sym.vreadproc_sym = jmesgq->head.vreadproc;
         sym.recvdataproc_sym = jmesgq->head.recvdataproc;
         sym.rawinvokeproc_sym = jmesgq->head.rawinvokeproc;
-        lobj_fx_load(lop, &sym);
+        lobj_fx_cover(lop, &sym);
 
         // set nonblock
         if (!jmesgq->na && el) {

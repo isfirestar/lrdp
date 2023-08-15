@@ -134,6 +134,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     }
     subobj = lobj_body(struct subscriberobj *, sublop);
 
+    sym.touchproc_sym = jsubcfg->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = jsubcfg->head.writeproc;
     sym.vwriteproc_sym = jsubcfg->head.vwriteproc;
@@ -141,7 +142,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     sym.vreadproc_sym = jsubcfg->head.vreadproc;
     sym.recvdataproc_sym = jsubcfg->head.recvdataproc;
     sym.rawinvokeproc_sym = jsubcfg->head.rawinvokeproc;
-    lobj_fx_load(sublop, &sym);
+    lobj_fx_cover(sublop, &sym);
 
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created

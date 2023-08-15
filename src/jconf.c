@@ -1161,3 +1161,98 @@ void jconf_mesgqobj_free()
         zfree(inner);
     }
 }
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        AEOBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_aeobj_inner
+{
+    struct jconf_aeobj body;
+    struct list_head ele_of_inner_aeobj;
+};
+
+static struct list_head g_jaeobj_head = { &g_jaeobj_head, &g_jaeobj_head };
+static unsigned int jaeobj_count = 0;
+
+static void __jconf_aeobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jnext;
+    struct jconf_aeobj_inner *aeobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+            aeobj = ztrycalloc(sizeof(*aeobj));
+            if (!aeobj) {
+                break;
+            }
+
+            jnext = __jconf_load_head(jcursor, &aeobj->body.head);
+            while (jnext) {
+                if (0 == strcasecmp(jnext->string, "setsize") && jnext->type == cJSON_Number) {
+                    aeobj->body.setsize = jnext->valueint;
+                } else {
+                    ;
+                }
+                jnext = jnext->next;
+            }
+
+            list_add_tail(&aeobj->ele_of_inner_aeobj, &g_jaeobj_head);
+            jaeobj_count++;
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_aeobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jaeobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jaeobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_aeobj_get(jconf_iterator_pt iterator, jconf_aeobj_pt *jaeobjs)
+{
+    struct list_head *cursor;
+    struct jconf_aeobj_inner *inner;
+
+    if (!iterator || !jaeobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jaeobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_aeobj_inner, ele_of_inner_aeobj);
+    *jaeobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_aeobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_aeobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jaeobj_head) {
+        inner = container_of(cursor, struct jconf_aeobj_inner, ele_of_inner_aeobj);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}

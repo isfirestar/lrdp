@@ -278,6 +278,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
     }
     netp = lobj_body(struct netobj *, lop);
 
+    sym.touchproc_sym = jnetcfg->head.touchproc;
     sym.freeproc_sym = NULL;
     sym.writeproc_sym = NULL;
     sym.vwriteproc_sym = NULL;
@@ -285,7 +286,7 @@ void netobj_create(const jconf_net_pt jnetcfg)
     sym.vreadproc_sym = jnetcfg->head.vreadproc;
     sym.recvdataproc_sym = jnetcfg->head.recvdataproc;
     sym.rawinvokeproc_sym = jnetcfg->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     do {
         /* determine protocol type and init framework */

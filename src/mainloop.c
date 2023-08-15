@@ -36,6 +36,7 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     mloop = lobj_body(mainloop_pt, lop);
 
     // freeproc can not covert
+    sym.touchproc_sym = jentry->head.touchproc;
     sym.freeproc_sym = jentry->head.freeproc;
     sym.writeproc_sym = jentry->head.writeproc;
     sym.vwriteproc_sym = jentry->head.vwriteproc;
@@ -43,7 +44,7 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
     sym.vreadproc_sym = jentry->head.vreadproc;
     sym.recvdataproc_sym = jentry->head.recvdataproc;
     sym.rawinvokeproc_sym = jentry->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     // load all entry procedure which defined in json configure file, ignore failed
     mloop->preinitproc = lobj_dlsym(lop, jentry->preinitproc);

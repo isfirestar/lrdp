@@ -11,6 +11,7 @@
 #include "ae.h"
 #include "epollobj.h"
 #include "mesgqobj.h"
+#include "aeobj.h"
 
 static void __lrdp_load_lwp()
 {
@@ -136,7 +137,7 @@ int main(int argc, char *argv[])
 {
     nsp_status_t status;
     jconf_entry_pt jentry;
-    lobj_pt mlop;
+    lobj_pt mlop, aelop;
     aeEventLoop *el;
 
     /* check program startup parameters, the 2st argument MUST be the path of configure json file
@@ -164,11 +165,12 @@ int main(int argc, char *argv[])
     lobj_init();
 
     /* initial event loop */
-    el = aeCreateEventLoop(100);
-    if (!el) {
-        printf("aeCreateEventLoop failed\n");
+    aelop = aeobj_create("ae-mloop", NULL, 100);
+    if (!aelop) {
+        printf("aeobj_create failed\n");
         return 1;
     }
+    el = aeobj_getel(aelop);
 
     /* load entry module */
     mlop = mloop_create(jentry);
@@ -214,8 +216,8 @@ int main(int argc, char *argv[])
     mloop_post_init(mlop, argc - 2, argv + 2);
 
     /* start main loop */
-    aeMain(el);
-    aeDeleteEventLoop(el);
+    aeobj_run(aelop);
+    lobj_ldestroy(aelop);
     lobj_ldestroy(mlop);
     return 0;
 }

@@ -74,6 +74,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     }
     lwp = lobj_body(struct lwp_item *, lop);
 
+    sym.touchproc_sym = jlwpcfg->head.touchproc;
     sym.freeproc_sym = jlwpcfg->head.freeproc;
     sym.writeproc_sym = jlwpcfg->head.writeproc;
     sym.vwriteproc_sym = jlwpcfg->head.vwriteproc;
@@ -81,7 +82,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     sym.vreadproc_sym = jlwpcfg->head.vreadproc;
     sym.recvdataproc_sym = jlwpcfg->head.recvdataproc;
     sym.rawinvokeproc_sym = jlwpcfg->head.rawinvokeproc;
-    lobj_fx_load(lop, &sym);
+    lobj_fx_cover(lop, &sym);
 
     do {
         lwp->execproc = lobj_dlsym(lop, jlwpcfg->execproc);

@@ -9,6 +9,7 @@ lobj_pt rawobj_create(const jconf_rawobj_pt jrawobj)
 
     lop = lobj_create(jrawobj->head.name, jrawobj->head.module, 0, jrawobj->head.ctxsize, NULL);
     if (lop) {
+        sym.touchproc_sym = jrawobj->head.touchproc;
         sym.freeproc_sym = jrawobj->head.freeproc;
         sym.writeproc_sym = jrawobj->head.writeproc;
         sym.vwriteproc_sym = jrawobj->head.vwriteproc;
@@ -16,8 +17,8 @@ lobj_pt rawobj_create(const jconf_rawobj_pt jrawobj)
         sym.vreadproc_sym = jrawobj->head.vreadproc;
         sym.recvdataproc_sym = jrawobj->head.recvdataproc;
         sym.rawinvokeproc_sym = jrawobj->head.rawinvokeproc;
-        lobj_fx_load(lop, &sym);
-        
+        lobj_fx_cover(lop, &sym);
+
         if (0 != jrawobj->initproc) {
             rawinitproc = lobj_dlsym(lop, jrawobj->initproc);
             if (rawinitproc) {
