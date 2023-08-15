@@ -116,13 +116,8 @@ static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize
 void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
 {
     lobj_pt redislop, sublop;
-    static const struct lobj_fx fx = {
-        .freeproc = &__subscriberobj_free,
-        .writeproc = NULL,
-        .vwriteproc = NULL,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx_sym sym;
+    struct lobj_fx fx = { NULL };
     struct subscriberobj *subobj;
     unsigned int i;
     struct list_head *pos, *n;
@@ -132,12 +127,21 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         return;
     }
 
+    fx.freeproc = &__subscriberobj_free;
     sublop = lobj_create(jsubcfg->head.name, jsubcfg->head.module, sizeof(struct subscriberobj), jsubcfg->head.ctxsize, &fx);
     if (!sublop) {
         return;
     }
     subobj = lobj_body(struct subscriberobj *, sublop);
-    lobj_cover_fx(sublop, NULL, jsubcfg->head.writeproc, jsubcfg->head.vwriteproc, jsubcfg->head.readproc, jsubcfg->head.vreadproc, NULL);
+
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = jsubcfg->head.writeproc;
+    sym.vwriteproc_sym = jsubcfg->head.vwriteproc;
+    sym.readproc_sym = jsubcfg->head.readproc;
+    sym.vreadproc_sym = jsubcfg->head.vreadproc;
+    sym.recvdataproc_sym = jsubcfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jsubcfg->head.rawinvokeproc;
+    lobj_fx_load(sublop, &sym);
 
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created
