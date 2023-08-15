@@ -512,6 +512,9 @@ void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
         return;
     }
 
+    if (!lop->fx.touchproc && sym->touchproc_sym) {
+        lop->fx.touchproc = (touch_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
+    }
     if (!lop->fx.freeproc && sym->freeproc_sym) {
         lop->fx.freeproc = (free_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
     }
@@ -532,6 +535,17 @@ void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
     }
     if (!lop->fx.rawinvokeproc && sym->rawinvokeproc_sym) {
         lop->fx.rawinvokeproc = (rawinvoke_pfn)ifos_dlsym(lop->handle, sym->rawinvokeproc_sym);
+    }
+}
+
+void lobj_fx_touch(lobj_pt lop, void *userptr, size_t userptrlen)
+{
+    if (!lop) {
+        return;
+    }
+
+    if (lop->fx.touchproc) {
+        lop->fx.touchproc(lop, userptr, userptrlen);
     }
 }
 
