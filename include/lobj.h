@@ -17,7 +17,7 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
-typedef void (*freeproc_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
+typedef void (*free_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
@@ -27,7 +27,7 @@ typedef int (*rawinvoke_pfn)(lobj_pt lop, const void *datain, size_t nin, void *
 
 struct lobj_fx
 {
-    freeproc_pfn freeproc;
+    free_pfn freeproc;
     write_pfn writeproc;
     vwrite_pfn vwriteproc;
     read_pfn readproc;
