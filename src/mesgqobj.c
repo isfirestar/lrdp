@@ -32,8 +32,29 @@ static int __mesgq_write(lobj_pt lop, const void *data, size_t n)
     struct mesgq_item *mesgq;
 
     mesgq = lobj_body(struct mesgq_item *, lop);
+    if (!mesgq) {
+        return -1;
+    }
 
     return mesgq_sendmsg(mesgq->fd, (const char *)data, n, 0, -1);
+}
+
+static int __mesgq_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+{
+    struct mesgq_item *mesgq;
+    int i;
+    int retsum;
+
+    mesgq = lobj_body(struct mesgq_item *, lop);
+    if (!mesgq) {
+        return -1;
+    }
+
+    retsum = 0;
+    for (i = 0; i < elements; i++) {
+        retsum += mesgq_sendmsg(mesgq->fd, (const char *)vdata[i], vsize[i], 0, -1);
+    }
+    return retsum;
 }
 
 static void __mesgq_ae_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
@@ -78,18 +99,16 @@ int __mesgq_read(lobj_pt lop, void *data, size_t n)
 
 lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
 {
-    struct lobj_fx fx = {
-        .freeproc = &__mesgq_free,
-        .writeproc = &__mesgq_write,
-        .vwriteproc = NULL,
-        .readproc = &__mesgq_read,
-        .vreadproc = NULL,
-        .recvdataproc = NULL,
-    };
     lobj_pt lop;
     struct mesgq_item *mesgq;
     nsp_status_t status;
+    struct lobj_fx_sym sym;
+    struct lobj_fx fx = { NULL };
 
+    fx.freeproc = &__mesgq_free;
+    fx.writeproc = &__mesgq_write;
+    fx.vwriteproc = &__mesgq_vwrite;
+    fx.readproc = &__mesgq_read;
     lop = lobj_create(jmesgq->head.name, jmesgq->head.module, sizeof(struct mesgq_item), jmesgq->head.ctxsize, &fx);
     if (!lop) {
         return NULL;
@@ -110,8 +129,15 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
             break;
         }
 
-        // freeproc and write proc can not be covered
-        lobj_cover_fx(lop, NULL, NULL, jmesgq->head.vwriteproc, NULL, jmesgq->head.vreadproc, jmesgq->head.recvdataproc);
+        // free/read/write proc can not be covered
+        sym.freeproc_sym = NULL;
+        sym.writeproc_sym = NULL;
+        sym.vwriteproc_sym = NULL;
+        sym.readproc_sym = NULL;
+        sym.vreadproc_sym = jmesgq->head.vreadproc;
+        sym.recvdataproc_sym = jmesgq->head.recvdataproc;
+        sym.rawinvokeproc_sym = jmesgq->head.rawinvokeproc;
+        lobj_fx_load(lop, &sym);
 
         // set nonblock
         if (!jmesgq->na && el) {
