@@ -61,7 +61,6 @@ extern void lobj_uninit();
 /* proce for create/destroy/destroy_all */
 extern lobj_pt lobj_create(const char *name, const char *module, size_t bodysize, size_t ctxsize, const struct lobj_fx *fx);
 extern lobj_pt lobj_dup(const char *name, const lobj_pt olop);
-extern void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc, const char *recvdataproc);
 extern void lobj_destroy(const char *name);
 extern void lobj_qdestroy(lobj_seq_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
