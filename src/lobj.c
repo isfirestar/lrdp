@@ -513,7 +513,7 @@ void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
     }
 
     if (!lop->fx.freeproc && sym->freeproc_sym) {
-        lop->fx.freeproc = (freeproc_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
+        lop->fx.freeproc = (free_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
     }
     if (!lop->fx.writeproc && sym->writeproc_sym) {
         lop->fx.writeproc = (write_pfn)ifos_dlsym(lop->handle, sym->writeproc_sym);
