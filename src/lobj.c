@@ -620,6 +620,19 @@ void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n)
     lop->fx.recvdataproc(lop, data, n);
 }
 
+int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout)
+{
+    if (!lop) {
+        return -1;
+    }
+
+    if (!lop->fx.rawinvokeproc) {
+        return;
+    }
+
+    return lop->fx.rawinvokeproc(lop, datain, nin, dataout, nout);
+}
+
 /* helper function impls */
 char *lobj_random_name(char *holder, size_t size)
 {
