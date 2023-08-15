@@ -36,6 +36,8 @@ static cJSON *__jconf_load_head(cJSON *jcursor, struct jconf_head *cfhead)
             strncpy(cfhead->vwriteproc, jnext->valuestring, sizeof(cfhead->vwriteproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "recvdataproc") && jnext->type == cJSON_String) {
             strncpy(cfhead->recvdataproc, jnext->valuestring, sizeof(cfhead->recvdataproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "rawinvokeproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->rawinvokeproc, jnext->valuestring, sizeof(cfhead->rawinvokeproc) - 1);
         } else if ( (0 == strcasecmp(jnext->string, "ctxsize") || 0 == strcasecmp(jnext->string, "contextsize") ) && jnext->type == cJSON_Number) {
             cfhead->ctxsize = jnext->valueint;
         } else {
