@@ -162,7 +162,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         .readproc = NULL,
         .vreadproc = NULL,
     };
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     lobj_pt lop;
     struct redisobj *redis_server_obj;
     nsp_status_t status;
@@ -219,7 +219,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
         .readproc = NULL,
         .vreadproc = &__redisobj_vread_na,
     };
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     lobj_pt lop;
     struct redisobj_na *redis_server_objna;
     nsp_status_t status;
