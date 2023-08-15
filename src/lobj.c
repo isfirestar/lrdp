@@ -573,7 +573,7 @@ void lobj_fx_load(lobj_pt lop, const struct lobj_fx_sym *sym)
         lop->fx.recvdataproc = (recvdata_pfn)ifos_dlsym(lop->handle, sym->recvdataproc_sym);
     }
     if (!lop->fx.rawinvokeproc && sym->rawinvokeproc_sym) {
-        lop->fx.rawinvokeproc = (rawinvokeproc_pfn)ifos_dlsym(lop->handle, sym->rawinvokeproc_sym);
+        lop->fx.rawinvokeproc = (rawinvoke_pfn)ifos_dlsym(lop->handle, sym->rawinvokeproc_sym);
     }
 }
 
@@ -660,7 +660,7 @@ int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout
     }
 
     if (!lop->fx.rawinvokeproc) {
-        return;
+        return -1;
     }
 
     return lop->fx.rawinvokeproc(lop, datain, nin, dataout, nout);
