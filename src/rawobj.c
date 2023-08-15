@@ -5,7 +5,7 @@ lobj_pt rawobj_create(const jconf_rawobj_pt jrawobj)
 {
     lobj_pt lop;
     void (*rawinitproc)(lobj_pt lop);
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
 
     lop = lobj_create(jrawobj->head.name, jrawobj->head.module, 0, jrawobj->head.ctxsize, NULL);
     if (lop) {
