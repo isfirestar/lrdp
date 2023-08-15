@@ -39,7 +39,7 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
 {
     lobj_pt lop;
     struct lobj_fx fx = { NULL };
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct timerobj *timer;
 
     fx.freeproc = &__timerobj_atexit;
