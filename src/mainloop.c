@@ -21,25 +21,29 @@ lobj_pt mloop_create(const jconf_entry_pt jentry)
 {
     lobj_pt lop;
     mainloop_pt mloop;
-    struct lobj_fx fx = {
-        .freeproc = &__mloop_atexit,
-        .vwriteproc = NULL,
-        .writeproc = NULL,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx_sym sym;
+    struct lobj_fx fx = { NULL };
 
     if (!jentry) {
         return NULL;
     }
 
+    fx.freeproc = &__mloop_atexit;
     lop = lobj_create("mainloop", jentry->head.module, sizeof(mainloop_t), jentry->head.ctxsize, &fx);
     if (!lop) {
         return NULL;
     }
     mloop = lobj_body(mainloop_pt, lop);
-    // freeproc cannot be covered
-    lobj_cover_fx(lop, NULL, jentry->head.vwriteproc, jentry->head.writeproc, jentry->head.readproc, jentry->head.vreadproc, NULL);
+
+    // freeproc can not covert
+    sym.freeproc_sym = jlwpcfg->head.freeproc;
+    sym.writeproc_sym = jlwpcfg->head.writeproc;
+    sym.vwriteproc_sym = jlwpcfg->head.vwriteproc;
+    sym.readproc_sym = jlwpcfg->head.readproc;
+    sym.vreadproc_sym = jlwpcfg->head.vreadproc;
+    sym.recvdataproc_sym = jlwpcfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jlwpcfg->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     // load all entry procedure which defined in json configure file, ignore failed
     mloop->preinitproc = lobj_dlsym(lop, jentry->preinitproc);
