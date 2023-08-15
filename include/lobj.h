@@ -31,6 +31,7 @@ typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 typedef int (*read_pfn)(lobj_pt lop, void *data, size_t n);
 typedef int (*vread_pfn)(lobj_pt lop, int elements, void **data, size_t *n);
+typedef int (*rawinvoke_pfn)(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout);
 
 struct lobj_fx
 {
@@ -40,6 +41,7 @@ struct lobj_fx
     read_pfn readproc;
     vread_pfn vreadproc;
     recvdata_pfn recvdataproc;
+    rawinvoke_pfn rawinvokeproc;
 };
 
 extern nsp_status_t lobj_init();
@@ -73,6 +75,7 @@ extern int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t 
 extern int lobj_fx_read(lobj_pt lop, void *data, size_t n);
 extern int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n);
 extern void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n);
+extern int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout);
 
 /* object helper function impls */
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
