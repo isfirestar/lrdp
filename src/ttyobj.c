@@ -139,7 +139,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
 {
     lobj_pt lop;
     struct ttyobj *ttyp;
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
 
     if (!jtty) {
