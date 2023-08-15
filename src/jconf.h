@@ -17,6 +17,7 @@ struct jconf_head
     JCONF_DECLARE_NORMAL_STRING(writeproc);
     JCONF_DECLARE_NORMAL_STRING(vwriteproc);
     JCONF_DECLARE_NORMAL_STRING(recvdataproc);
+    JCONF_DECLARE_NORMAL_STRING(rawinvokeproc);
     unsigned int ctxsize;
 };
 
