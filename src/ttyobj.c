@@ -122,29 +122,48 @@ static int __ttyobj_write(struct lobj *lop, const void *data, size_t n)
     return (ttyp->fd > 0) ? write(ttyp->fd, data, n) : -1;
 }
 
+static int __ttyobj_read_na(lobj_pt lop, void *data, size_t n)
+{
+    struct ttyobj *ttyp;
+
+    if (!lop || !data || !n) {
+        return -1;
+    }
+
+    ttyp = lobj_body(struct ttyobj *, lop);
+
+    return (ttyp->fd > 0) ? read(ttyp->fd, data, n) : -1;
+}
+
 lobj_pt ttyobj_create(const jconf_tty_pt jtty)
 {
     lobj_pt lop;
     struct ttyobj *ttyp;
-    const struct lobj_fx fx = {
-        .freeproc = &__ttyobj_on_free,
-        .writeproc = &__ttyobj_write,
-        .vwriteproc = NULL,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx_sym sym;
+    struct lobj_fx fx = { NULL };
 
     if (!jtty) {
         return NULL;
     }
 
+    fx.freeproc = &__ttyobj_on_free;
+    fx.writeproc = &__ttyobj_write;
+    fx.readproc = &__ttyobj_read_na;
     lop = lobj_create(jtty->head.name, jtty->head.module, sizeof(*ttyp), jtty->head.ctxsize, &fx);
     if (!lop) {
         return NULL;
     }
     ttyp = lobj_body(struct ttyobj *, lop);
+    
     // free and write proc can not be covered
-    lobj_cover_fx(lop, NULL, NULL, jtty->head.vwriteproc, jtty->head.readproc, jtty->head.vreadproc, NULL);
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = NULL;
+    sym.vwriteproc_sym =  jtty->head.vwriteproc;
+    sym.readproc_sym =  NULL;
+    sym.vreadproc_sym = jtty->head.vreadproc;
+    sym.recvdataproc_sym = jtty->head.recvdataproc;
+    sym.rawinvokeproc_sym = jtty->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     do {
         // open tty file
