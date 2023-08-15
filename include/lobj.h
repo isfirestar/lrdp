@@ -17,7 +17,7 @@ typedef int64_t lobj_seq_t;
 struct lobj;
 typedef struct lobj *lobj_pt;
 
-typedef void (*touch_pfn)(lobj_pt lop);
+typedef void (*touch_pfn)(lobj_pt lop, void *userptr, size_t userptrlen);
 typedef void (*free_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
