@@ -258,13 +258,8 @@ int __netobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize
 void netobj_create(const jconf_net_pt jnetcfg)
 {
     lobj_pt lop;
-    struct lobj_fx fx = {
-        .freeproc = &__netobj_free,
-        .writeproc = &__netobj_write,
-        .vwriteproc = &__netobj_vwrite,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
+    struct lobj_fx fx = { NULL };
+    struct lobj_fx_sym sym;
     struct netobj *netp;
     nsp_status_t status;
     lobj_seq_t seq;
@@ -274,12 +269,23 @@ void netobj_create(const jconf_net_pt jnetcfg)
     }
 
     // create object first
+    fx.freeproc = &__netobj_free;
+    fx.writeproc = &__netobj_write;
+    fx.vwriteproc = &__netobj_vwrite;
     lop = lobj_create(jnetcfg->head.name, jnetcfg->head.module, sizeof(struct netobj), jnetcfg->head.ctxsize, &fx);
     if (!lop) {
         return;
     }
     netp = lobj_body(struct netobj *, lop);
-    lobj_cover_fx(lop, jnetcfg->head.freeproc, jnetcfg->head.writeproc, jnetcfg->head.vwriteproc, jnetcfg->head.readproc, jnetcfg->head.vreadproc, NULL);
+
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = NULL;
+    sym.vwriteproc_sym = NULL;
+    sym.readproc_sym = jnetcfg->head.readproc;
+    sym.vreadproc_sym = jnetcfg->head.vreadproc;
+    sym.recvdataproc_sym = jnetcfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jnetcfg->head.rawinvokeproc;
+    lobj_fx_load(lop, &sym);
 
     do {
         /* determine protocol type and init framework */
