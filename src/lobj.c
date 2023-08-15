@@ -323,48 +323,6 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
     return __lobj_attach_to_dict(lop);
 }
 
-void lobj_cover_fx(lobj_pt lop, const char *freeproc, const char *writeproc, const char *vwriteproc, const char *readproc, const char *vreadproc, const char *recvdataproc)
-{
-    if (!lop) {
-        return;
-    }
-
-    if (!lop->handle) {
-        return;
-    }
-
-    if (freeproc) {
-        if (0 != freeproc[0]) {
-            lop->fx.freeproc = (freeproc_pfn)ifos_dlsym(lop->handle, freeproc);
-        }
-    }
-    if (writeproc) {
-        if (0 != writeproc[0]) {
-            lop->fx.writeproc = (write_pfn)ifos_dlsym(lop->handle, writeproc);
-        }
-    }
-    if (vwriteproc) {
-        if (0 != vwriteproc[0]) {
-            lop->fx.vwriteproc = (vwrite_pfn)ifos_dlsym(lop->handle, vwriteproc);
-        }
-    }
-    if (readproc) {
-        if (0 != readproc[0]) {
-            lop->fx.readproc = (read_pfn)ifos_dlsym(lop->handle, readproc);
-        }
-    }
-    if (vreadproc) {
-        if (0 != vreadproc[0]) {
-            lop->fx.vreadproc = (vread_pfn)ifos_dlsym(lop->handle, vreadproc);
-        }
-    }
-    if (recvdataproc) {
-        if (0 != recvdataproc[0]) {
-            lop->fx.recvdataproc = (recvdata_pfn)ifos_dlsym(lop->handle, recvdataproc);
-        }
-    }
-}
-
 static void __lobj_finalize(lobj_pt lop)
 {
     if (!lop) {
