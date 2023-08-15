@@ -60,7 +60,7 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
     nsp_status_t status;
     struct lwp_item *lwp;
     lobj_pt lop;
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
 
     if (!jlwpcfg) {
