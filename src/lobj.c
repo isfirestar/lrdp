@@ -243,12 +243,27 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         return NULL;
     }
 
-    oname = (NULL == name) ? lobj_random_name(holder, sizeof(holder)) : name;
-    lop->seq = seq;
-    strncpy(lop->name, oname, sizeof(lop->name) - 1);
-    if (module) {
-        lop->handle = __lobj_create_module(module);
+    /* determine the name of object */
+    oname = NULL;
+    if (name) {
+        if (name[0]) {
+            oname = name;
+        }
     }
+    if (!oname) {
+        oname = lobj_random_name(holder, sizeof(holder));
+    }
+    strncpy(lop->name, oname, sizeof(lop->name) - 1);
+
+    /* determine the module of object */
+    if (module) {
+        if (module[0]) {
+            lop->handle = __lobj_create_module(module);
+        }
+    }
+
+    /* Other fix field */
+    lop->seq = seq;
     lop->size = size;
     lop->refcount = 0;
     lop->status = LOS_NORMAL;
@@ -259,14 +274,6 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
         if (!lop->ctx) {
             lop->ctxsize = 0; /* failed on context allocation didn't affect process continue */
-        }
-    }
-
-    if (lop->handle && name) {
-        snprintf(loader, sizeof(loader), "%s_loaded", name);
-        on_loaded = ifos_dlsym(lop->handle, loader);
-        if (on_loaded) {
-            on_loaded(lop, lop->ctx, lop->ctxsize);
         }
     }
 
@@ -309,14 +316,6 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
         if (!lop->ctx) {
             lop->ctxsize = 0; // ignore context allocate failure
-        }
-    }
-
-    if (lop->handle && name) {
-        snprintf(loader, sizeof(loader), "%s_loaded", name);
-        on_loaded = ifos_dlsym(lop->handle, loader);
-        if (on_loaded) {
-            on_loaded(lop, lop->ctx, lop->ctxsize);
         }
     }
 

@@ -1,5 +1,7 @@
 #include "ttyobj.h"
 
+#include "threading.h"
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <termios.h>
@@ -10,6 +12,7 @@ struct ttyobj
     struct termios options;
     char device[128];
     struct aeEventLoop *el;
+    lwp_mutex_t mutex;
 };
 
 /* this macro use to convert visibility databit value to linux databit definition */
@@ -107,11 +110,14 @@ static void __ttyobj_on_free(struct lobj *lop, void *context, size_t ctxsize)
     if (ttyp->fd > 0) {
         close(ttyp->fd);
     }
+
+    lwp_mutex_uninit(&ttyp->mutex);
 }
 
 static int __ttyobj_write(struct lobj *lop, const void *data, size_t n)
 {
     struct ttyobj *ttyp;
+    int retval;
 
     if (!lop || !data || !n) {
         return -1;
@@ -119,12 +125,17 @@ static int __ttyobj_write(struct lobj *lop, const void *data, size_t n)
 
     ttyp = lobj_body(struct ttyobj *, lop);
 
-    return (ttyp->fd > 0) ? write(ttyp->fd, data, n) : -1;
+    lwp_mutex_lock(&ttyp->mutex);
+    retval = (ttyp->fd > 0) ? write(ttyp->fd, data, n) : -1;
+    lwp_mutex_unlock(&ttyp->mutex);
+
+    return retval;
 }
 
 static int __ttyobj_read_na(lobj_pt lop, void *data, size_t n)
 {
     struct ttyobj *ttyp;
+    int retval;
 
     if (!lop || !data || !n) {
         return -1;
@@ -132,7 +143,11 @@ static int __ttyobj_read_na(lobj_pt lop, void *data, size_t n)
 
     ttyp = lobj_body(struct ttyobj *, lop);
 
-    return (ttyp->fd > 0) ? read(ttyp->fd, data, n) : -1;
+    lwp_mutex_lock(&ttyp->mutex);
+    retval = (ttyp->fd > 0) ? read(ttyp->fd, data, n) : -1;
+    lwp_mutex_unlock(&ttyp->mutex);
+
+    return retval;
 }
 
 lobj_pt ttyobj_create(const jconf_tty_pt jtty)
@@ -154,6 +169,9 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         return NULL;
     }
     ttyp = lobj_body(struct ttyobj *, lop);
+
+    // init mutex for ttyobj IO, some serial port driver is not thread safe for example : RS485
+    lwp_mutex_init(&ttyp->mutex, NO);
 
     // free and write proc can not be covered
     sym.touchproc_sym = jtty->head.touchproc;
@@ -269,8 +287,14 @@ static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int 
     ssize_t n;
 
     lop = (lobj_pt)clientData;
+    if (!lop) {
+        return;
+    }
 
+    lwp_mutex_lock(&ttyp->mutex);
     n = read(fd, buf, sizeof(buf));
+    lwp_mutex_unlock(&ttyp->mutex);
+
     if (n > 0) {
         lobj_fx_read(lop, buf, n);
     } else if (n < 0) {

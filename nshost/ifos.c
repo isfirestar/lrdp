@@ -97,12 +97,22 @@ void *ifos_dlopen2(const char *file, int flags)
 
 void *ifos_dlsym(void *handle, const char *symbol)
 {
+    if (!handle || !symbol) {
+        return NULL;
+    }
+
+    if (!symbol[0]) {
+        return NULL;
+    }
+
     return dlsym(handle, symbol);
 }
 
 void ifos_dlclose(void *handle)
 {
-    dlclose(handle);
+    if (handle) {
+        dlclose(handle);
+    }
 }
 
 const char *ifos_dlerror()
