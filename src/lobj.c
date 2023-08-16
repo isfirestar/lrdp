@@ -513,7 +513,7 @@ void lobj_fx_cover(lobj_pt lop, const struct lobj_fx_sym *sym)
     }
 
     if (!lop->fx.touchproc && sym->touchproc_sym) {
-        lop->fx.touchproc = (touch_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
+        lop->fx.touchproc = (touch_pfn)ifos_dlsym(lop->handle, sym->touchproc_sym);
     }
     if (!lop->fx.freeproc && sym->freeproc_sym) {
         lop->fx.freeproc = (free_pfn)ifos_dlsym(lop->handle, sym->freeproc_sym);
