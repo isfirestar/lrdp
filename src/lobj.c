@@ -227,9 +227,8 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
 {
     lobj_pt lop;
     const char *oname;
-    char holder[64], loader[128];
+    char holder[64];
     int64_t seq;
-    void (*on_loaded)(lobj_pt lop, void *ctx, size_t ctxsize);
 
     // use g_seq to control module init order
     seq =  __atomic_add_fetch(&g_seq, 1, __ATOMIC_SEQ_CST);
@@ -284,8 +283,7 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
 {
     lobj_pt lop;
     int64_t seq;
-    char holder[64], loader[128];
-    void (*on_loaded)(lobj_pt lop, void *ctx, size_t ctxsize);
+    char holder[64];
 
     if (!olop) {
         return NULL;
