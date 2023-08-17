@@ -290,6 +290,7 @@ static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int 
     if (!lop) {
         return;
     }
+    ttyp = lobj_body(struct ttyobj *, lop);
 
     lwp_mutex_lock(&ttyp->mutex);
     n = read(fd, buf, sizeof(buf));
