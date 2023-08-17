@@ -244,6 +244,81 @@ static int __pcall_iterate_parameter(va_list ap, char *cursor, char **next, unio
     return type_item->va_type_comb_index;
 }
 
+static int __pcall_f(const void *pfn, void *returnptr, const struct stdc_type_dict *ctype_return_item, union va_type_comb *combs, int par_count)
+{
+    double (*pfnf)();
+    double retf;
+
+    pfnf = (double (*)())pfn;
+    switch (par_count) {
+        case 0:
+            retf = pfnf();
+            break;
+        case 1:
+            retf = pfnf(combs[0].ll);
+            break;
+        case 2:
+            retf = pfnf(combs[0].ll, combs[1].ll);
+            break;
+        case 3:
+            retf = pfnf(combs[0].ll, combs[1].ll, combs[2].ll);
+            break;
+        case 4:
+            retf = pfnf(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll);
+            break;
+        case 5:
+            retf = pfnf(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll);
+            break;
+        case 6:
+            retf = pfnf(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll, combs[5].ll);
+            break;
+        default:
+            return -1;
+    }
+
+    memcpy(returnptr, &retf, ctype_return_item->size);
+    return 0;
+}
+
+static int __pcall_l(const void *pfn, void *returnptr, const struct stdc_type_dict *ctype_return_item, union va_type_comb *combs, int par_count)
+{
+    long (*pfnl)();
+    long retl;
+    
+    pfnl = (long (*)())pfn;
+    switch (par_count) {
+        case 0:
+            retl = pfnl();
+            break;
+        case 1:
+            retl = pfnl(combs[0].ll);
+            break;
+        case 2:
+            retl = pfnl(combs[0].ll, combs[1].ll);
+            break;
+        case 3:
+            retl = pfnl(combs[0].ll, combs[1].ll, combs[2].ll);
+            break;
+        case 4:
+            retl = pfnl(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll);
+            break;
+        case 5:
+            retl = pfnl(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll);
+            break;
+        case 6:
+            retl = pfnl(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll, combs[5].ll);
+            break;
+        default:
+            return -1;
+    }
+
+    if (ctype_return_item->size > 0 && returnptr) {
+        memcpy(returnptr, &retl, ctype_return_item->size);
+    }
+
+    return 0;
+}
+
 /* this function @lop_portable_call use portable way to invoke a specific function
  * parameter @prototype: the prototype of the function to be invoked
  *
@@ -259,12 +334,11 @@ int lobj_portable_call(lobj_pt lop, const char *prototype, void *returnptr, ...)
 {
     char *next, *cursor, *dup, *func_name;
     va_list ap;
-    long (*pfn)();
+    void (*pfn)();
     union va_type_comb combs[10];
-    int par_count, i, idx[10], pcallret;
+    int i, par, pcallret;
     const struct stdc_type_dict *ctype_return_item;
-    long retl;
- 
+    
     if (!prototype) {
         return -1;
     }
@@ -292,58 +366,32 @@ int lobj_portable_call(lobj_pt lop, const char *prototype, void *returnptr, ...)
             break;
         }
         cursor = next;
-        pfn = (long (*)())lobj_dlsym(lop, func_name);
+        pfn = (void (*)())lobj_dlsym(lop, func_name);
         if (!pfn) {
             break;
         }
 
         // traverse the parameter list and get the parameter value
-        par_count = 0;
         i = 0;
         va_start(ap, returnptr);
-        while ((idx[i] = __pcall_iterate_parameter(ap, cursor, &next, &combs[i])) > 0) {
+        while (1) {
+            par = __pcall_iterate_parameter(ap, cursor, &next, &combs[i]);
+            if (par < 0) {
+                break;
+            }
             cursor = next;
             i++;
-            par_count++;
         }
         va_end(ap);
 
-        pcallret = 0;
-        switch (par_count) {
-            case 0:
-                retl = pfn();
-                break;
-            case 1:
-                retl = pfn(combs[0].ll);
-                break;
-            case 2:
-                retl = pfn(combs[0].ll, combs[1].ll);
-                break;
-            case 3:
-                retl = pfn(combs[0].ll, combs[1].ll, combs[2].ll);
-                break;
-            case 4:
-                retl = pfn(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll);
-                break;
-            case 5:
-                retl = pfn(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll);
-                break;
-            case 6:
-                retl = pfn(combs[0].ll, combs[1].ll, combs[2].ll, combs[3].ll, combs[4].ll, combs[5].ll);
-                break;
-            default:
-                pcallret = -1;
-                break;
-        }
-
-        if (0 == pcallret && ctype_return_item->size > 0 && returnptr) {
-            if (ctype_return_item->ispointer) {
-                memcpy(returnptr, (const void *)retl, ctype_return_item->size);
+        // call appropriate function according to the return type
+        if (par >= 0 && i <= 6 && i >= 0) {
+            if (ctype_return_item->isfloat) {
+                pcallret = __pcall_f(pfn, returnptr, ctype_return_item, combs, i);
             } else {
-                memcpy(returnptr, &retl, ctype_return_item->size);
+                pcallret = __pcall_l(pfn, returnptr, ctype_return_item, combs, i);
             }
         }
-        
     } while (0);
     
     zfree(dup);
