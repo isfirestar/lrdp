@@ -76,13 +76,26 @@ extern int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n);
 extern void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n);
 extern int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout);
 
-/* lobj_portable_call is a very important component for lobj framework, user call this function to invoke other service in module @lop
- *  the prototype string is a string which describe the function prototype, the format is like the definition of function pointer: int (*funcname)(int, char *)
- *  the returnptr is a pointer to storage the return value, you can specify NULL to this parameter when the prototype specify void return type or you want to ignore the return value */
-extern int lobj_portable_call(lobj_pt lop, const char *prototype, void *returnptr, ...) ;
-
-/* object helper function impls */
+/* object helper function impls 
+ *  follow by the dlsym implementations, we have ability to call other functions which shared by any other modules.
+ *  1st, we declare a function potinter to by the target function and then load address from lop object.
+ *  2nd, directly invoke function
+ * demo:
+ *  void myfunc() {
+ *     lobj_pt lop = lobj_refer("myobj");
+ *     if (lop) {   // check if object exist
+ *         lobj_declare_pcall(lop, myfunc, void, int, char *);   // declare a function pointer
+ *         lobj_pcall(myfunc, 1, "hello");   // invoke function
+ *         lobj_derefer(lop);
+ *     }
+ *  } */
 extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
+#define lobj_text2str(x) #x
+#define lobj_declare_pcall(lop, name, returntype, ...)   \
+    returntype (*lobj_pcall_##name)(__VA_ARGS__) = (returntype (*)(__VA_ARGS__))lobj_dlsym(lop, lobj_text2str(name))
+    
+#define lobj_pcall(name, ...)   ((NULL != lobj_pcall_##name) ? lobj_pcall_##name(__VA_ARGS__) : 0)
+
 extern char *lobj_random_name(char *holder, size_t size);
 /* query the context size in bytes of specify object, if @ctx not null, the context pointer will storage on it
  *  ise @lob_resize_context to reset the context buffer size, you can specify zero newsize to delete the existing context buffer */
