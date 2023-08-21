@@ -9,7 +9,7 @@ PROJECT_DIR := $(shell pwd)/../
 TARGET := $(PROGRAM)
 
 # add include directory, path MUST end with slash
-INC_DIRS := $(PROJECT_DIR)include/	$(PROJECT_DIR)include/redis/ $(PROJECT_DIR)nshost/ $(PROJECT_DIR)redis/ $(PROJECT_DIR)redis/hiredis/ $(PROJECT_DIR)src/
+INC_DIRS := $(PROJECT_DIR)include/	$(PROJECT_DIR)include/redis/ $(PROJECT_DIR)nshost/ $(PROJECT_DIR)redis/ $(PROJECT_DIR)redis/hiredis/ $(PROJECT_DIR)src/ $(PROJECT_DIR)/src/redis/ $(PROJECT_DIR)/src/redis/hiredis/
 
 # add include directory, this variable allow framework force traverse and include all head files in entire directoy and it's sub directory
 # path MUST end with slash

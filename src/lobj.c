@@ -29,11 +29,19 @@ struct lobj
 };
 typedef struct lobj lobj_t;
 
+static void *dictFetchValue(dict *d, const void *key)
+{
+    dictEntry *de;
+
+    de = dictFind(d, key);
+    return de ? dictGetEntryVal(de) : NULL;
+}
+
 static dict *g_dict_hash_byname = NULL;
 static dict *g_dict_hash_byseq = NULL;
 static struct spin_lock g_lobj_container_locker = SPIN_LOCK_INITIALIZER;
 
-static uint64_t __lobj_hash_name(const void *key)
+static unsigned int __lobj_hash_name(const void *key)
 {
     return dictGenHashFunction((unsigned char*)key, strlen((char*)key));
 }
@@ -58,9 +66,9 @@ static dictType dictSortByName = {
     NULL                                        /* val destructor */
 };
 
-static uint64_t __lobj_hash_seq(const void *key)
+static unsigned int __lobj_hash_seq(const void *key)
 {
-    return *(uint64_t *)key;
+    return *(unsigned int *)key;
 }
 
 static int __lobj_compare_seq(void *privdata, const void *key1, const void *key2)
@@ -113,7 +121,7 @@ static void __lobj_finalize(lobj_pt lop);
 // set any lobj's status to LOS_CLOSE_WAIT means that the lobj is waiting for close and couldn't be referenced
 void lobj_uninit()
 {
-    dictIterator *di;
+    dictIterator di;
     dictEntry *de;
     lobj_pt lop, *removed;
     size_t real_removed, i;
@@ -130,10 +138,11 @@ void lobj_uninit()
     }
     real_removed = 0;
 
+    dictInitIterator(&di, g_dict_hash_byname);
+
     acquire_spinlock(&g_lobj_container_locker);
-    di = dictGetIterator(g_dict_hash_byname);
-    while ((de = dictNext(di)) != NULL) {
-        lop = (lobj_pt)dictGetVal(de);
+    while ((de = dictNext(&di)) != NULL) {
+        lop = (lobj_pt)dictGetEntryVal(de);
          if (lop->refcount > 0) {
             lop->status = LOS_CLOSE_WAIT;
         } else {
@@ -141,7 +150,6 @@ void lobj_uninit()
             removed[real_removed++] = lop;
         }
     }
-    dictReleaseIterator(di);
     release_spinlock(&g_lobj_container_locker);
 
     // finalize the removed lobjs

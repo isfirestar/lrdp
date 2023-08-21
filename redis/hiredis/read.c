@@ -59,7 +59,7 @@ static void __redisReaderSetError(redisReader *r, int type, const char *str) {
     }
 
     /* Clear input buffer on errors. */
-    hi_sdsfree(r->buf);
+    sdsfree(r->buf);
     r->buf = NULL;
     r->pos = r->len = 0;
 
@@ -303,11 +303,14 @@ static int processLineItem(redisReader *r) {
                 d = INFINITY; /* Positive infinite. */
             } else if (len == 4 && strcasecmp(buf,"-inf") == 0) {
                 d = -INFINITY; /* Negative infinite. */
+            } else if ((len == 3 && strcasecmp(buf,"nan") == 0) ||
+                       (len == 4 && strcasecmp(buf, "-nan") == 0)) {
+                d = NAN; /* nan. */
             } else {
                 d = strtod((char*)buf,&eptr);
                 /* RESP3 only allows "inf", "-inf", and finite values, while
-                 * strtod() allows other variations on infinity, NaN,
-                 * etc. We explicity handle our two allowed infinite cases
+                 * strtod() allows other variations on infinity,
+                 * etc. We explicity handle our two allowed infinite cases and NaN
                  * above, so strtod() should only result in finite values. */
                 if (buf[0] == '\0' || eptr != &buf[len] || !isfinite(d)) {
                     __redisReaderSetError(r,REDIS_ERR_PROTOCOL,
@@ -374,7 +377,7 @@ static int processLineItem(redisReader *r) {
             if (r->fn && r->fn->createString)
                 obj = r->fn->createString(cur,p,len);
             else
-                obj = (void*)(size_t)(cur->type);
+                obj = (void*)(uintptr_t)(cur->type);
         }
 
         if (obj == NULL) {
@@ -439,7 +442,7 @@ static int processBulkItem(redisReader *r) {
                 if (r->fn && r->fn->createString)
                     obj = r->fn->createString(cur,s+2,len);
                 else
-                    obj = (void*)(long)cur->type;
+                    obj = (void*)(uintptr_t)cur->type;
                 success = 1;
             }
         }
@@ -536,7 +539,7 @@ static int processAggregateItem(redisReader *r) {
             if (r->fn && r->fn->createArray)
                 obj = r->fn->createArray(cur,elements);
             else
-                obj = (void*)(long)cur->type;
+                obj = (void*)(uintptr_t)cur->type;
 
             if (obj == NULL) {
                 __redisReaderSetErrorOOM(r);
@@ -655,7 +658,7 @@ redisReader *redisReaderCreateWithFunctions(redisReplyObjectFunctions *fn) {
     if (r == NULL)
         return NULL;
 
-    r->buf = hi_sdsempty();
+    r->buf = sdsempty();
     if (r->buf == NULL)
         goto oom;
 
@@ -696,12 +699,12 @@ void redisReaderFree(redisReader *r) {
         hi_free(r->task);
     }
 
-    hi_sdsfree(r->buf);
+    sdsfree(r->buf);
     hi_free(r);
 }
 
 int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
-    hisds newbuf;
+    sds newbuf;
 
     /* Return early when this reader is in an erroneous state. */
     if (r->err)
@@ -710,19 +713,19 @@ int redisReaderFeed(redisReader *r, const char *buf, size_t len) {
     /* Copy the provided buffer. */
     if (buf != NULL && len >= 1) {
         /* Destroy internal buffer when it is empty and is quite large. */
-        if (r->len == 0 && r->maxbuf != 0 && hi_sdsavail(r->buf) > r->maxbuf) {
-            hi_sdsfree(r->buf);
-            r->buf = hi_sdsempty();
+        if (r->len == 0 && r->maxbuf != 0 && sdsavail(r->buf) > r->maxbuf) {
+            sdsfree(r->buf);
+            r->buf = sdsempty();
             if (r->buf == 0) goto oom;
 
             r->pos = 0;
         }
 
-        newbuf = hi_sdscatlen(r->buf,buf,len);
+        newbuf = sdscatlen(r->buf,buf,len);
         if (newbuf == NULL) goto oom;
 
         r->buf = newbuf;
-        r->len = hi_sdslen(r->buf);
+        r->len = sdslen(r->buf);
     }
 
     return REDIS_OK;
@@ -767,9 +770,9 @@ int redisReaderGetReply(redisReader *r, void **reply) {
     /* Discard part of the buffer when we've consumed at least 1k, to avoid
      * doing unnecessary calls to memmove() in sds.c. */
     if (r->pos >= 1024) {
-        if (hi_sdsrange(r->buf,r->pos,-1) < 0) return REDIS_ERR;
+        if (sdsrange(r->buf,r->pos,-1) < 0) return REDIS_ERR;
         r->pos = 0;
-        r->len = hi_sdslen(r->buf);
+        r->len = sdslen(r->buf);
     }
 
     /* Emit a reply when there is one. */
