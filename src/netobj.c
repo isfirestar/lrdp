@@ -119,9 +119,7 @@ static void __netobj_tcp_recvdata(HTCPLINK link, const void *data, unsigned int 
         return;
     }
 
-    if (lobj_fx_read(lop, (void *)data, size) == -ENOENT) {
-        lobj_fx_vread(lop, 1, (void **)&data, (size_t *)&size);
-    }
+    lobj_fx_on_recvdata(lop, data, size);
     lobj_derefer(lop);
 }
 
