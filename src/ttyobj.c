@@ -297,7 +297,7 @@ static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int 
     lwp_mutex_unlock(&ttyp->mutex);
 
     if (n > 0) {
-        lobj_fx_read(lop, buf, n);
+        lobj_fx_on_recvdata(lop, buf, n);
     } else if (n < 0) {
         if (errno != EAGAIN) {
             aeDeleteFileEvent(el, fd, AE_READABLE);
