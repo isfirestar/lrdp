@@ -28,8 +28,23 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
     struct subscriberobj *subobj;
     redisReply *reply;
 
+    if (!ac) {
+        printf("subscriber redis asynchronous callback without legal context.\n");
+        return;
+    }
+
+    if (ac->err) {
+        if (ac->errstr && ac->errstr[0]) {
+            printf("subscriber asynchronous error : %s\n", ac->errstr);
+        } else {
+            printf("subscriber asynchronous error : %d\n", ac->err);
+        }
+        return;
+    }
+    
     reply = (redisReply *)r;
     if (!reply) {
+        printf("subscriber asynchronous reply not exist\n");
         return;
     }
 
