@@ -256,7 +256,11 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
         }
 
         if (redis_server_objna->c->err) {
-            printf("Connection error: %s\n", redis_server_objna->c->errstr);
+            if (redis_server_objna->c->errstr && redis_server_objna->c->errstr[0]) {
+                printf("Connection error: %s\n", redis_server_objna->c->errstr);
+            } else {
+                printf("Connection error: %d\n", redis_server_objna->c->err);
+            }
             break;
         }
 
