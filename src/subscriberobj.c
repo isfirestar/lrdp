@@ -125,7 +125,6 @@ static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize
     if (subobj->redislop) {
         lobj_derefer(subobj->redislop);
     }
-    zfree(subobj);
 }
 
 void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
@@ -162,6 +161,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created
     if (NULL == (redislop = lobj_refer(jsubcfg->redisserver))) {
+        printf("redis-server object %s for subscriber no found.\n", jsubcfg->redisserver);
         lobj_ldestroy(sublop);
         return;
     }
