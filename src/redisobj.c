@@ -9,6 +9,7 @@
 struct redisobj
 {
     struct endpoint host;
+    char domain[128];
     redisAsyncContext *c;
     aeEventLoop *el;
 };
@@ -22,32 +23,52 @@ struct redisobj_na
 
 static void __redisobj_free(lobj_pt lop, void *context, size_t ctxsize)
 {
-    struct redisobj *redis_server_obj;
+    struct redisobj *robj;
 
-    redis_server_obj = lobj_body(struct redisobj *, lop);
-    if (redis_server_obj->c) {
-        redisAsyncFree(redis_server_obj->c);
+    robj = lobj_body(struct redisobj *, lop);
+    if (robj->c) {
+        redisAsyncFree(robj->c);
     }
 }
 
 static void __redisobj_free_na(lobj_pt lop, void *context, size_t ctxsize)
 {
-    struct redisobj_na *redis_server_objna;
+    struct redisobj_na *robjna;
 
-    redis_server_objna = lobj_body(struct redisobj_na *, lop);
-    if (redis_server_objna->c) {
-        redisFree(redis_server_objna->c);
+    robjna = lobj_body(struct redisobj_na *, lop);
+    if (robjna->c) {
+        redisFree(robjna->c);
     }
 }
 
 static void __redisobj_default_callbackfn(struct redisAsyncContext *ac, void *r, void *privateData)
 {
+    ;
+}
+
+static int __redisobj_write(lobj_pt lop, const void *data, size_t n)
+{
+    struct redisobj *robj;
+    int retval;
+
+    if (!lop || !data || 0 == n) {
+        return -1;
+    }
+
+    robj = lobj_body(struct redisobj *, lop);
+    retval = redisAsyncFormattedCommand(robj->c,  __redisobj_default_callbackfn, NULL, (const char *)data, n);
+    if (retval != REDIS_OK) {
+        return -1;
+    }
+    redisAsyncHandleWrite(robj->c);
+    return retval;
 }
 
 static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata, size_t *vsize)
 {
-    struct redisobj *redis_server_obj;
+    struct redisobj *robj;
     redisCallbackFn *redisobjDefaultCallback;
+    int retval;
 
     if (!lop || elements < 3 || !vdata || !vsize) {
         return -1;
@@ -57,19 +78,96 @@ static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata,
         return -1;
     }
 
-    redis_server_obj = lobj_body(struct redisobj *, lop);
+    robj = lobj_body(struct redisobj *, lop);
 
     redisobjDefaultCallback = &__redisobj_default_callbackfn;
     if (vdata[0]) {
         redisobjDefaultCallback = (redisCallbackFn *)vdata[0];
     }
 
-    return redisAsyncCommandArgv(redis_server_obj->c, redisobjDefaultCallback, (void *)vdata[1], elements - 2, (const char **)&vdata[2], &vsize[2]);
+    retval = redisAsyncCommandArgv(robj->c, redisobjDefaultCallback, (void *)vdata[1], elements - 2, (const char **)&vdata[2], &vsize[2]);
+    if (retval != REDIS_OK) {
+        return -1;
+    }
+    redisAsyncHandleWrite(robj->c);
+    return retval;
+}
+
+extern int redisAeAttach(aeEventLoop *loop, redisAsyncContext *ac);
+
+static void __redisobj_on_connected(const redisAsyncContext *c, int status)
+{
+    printf("Connected...\n");
+}
+
+static void __redisobj_on_disconnect(const redisAsyncContext *c, int status)
+{
+    printf("Disconnected...\n");
+}
+
+void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
+{
+    struct lobj_fx fx = {
+        .freeproc = &__redisobj_free,
+        .writeproc = &__redisobj_write,
+        .vwriteproc = &__redisobj_vwrite,
+        .readproc = NULL,
+        .vreadproc = NULL,
+    };
+    struct lobj_fx_sym sym = { NULL };
+    lobj_pt lop;
+    struct redisobj *robj;
+    nsp_status_t status;
+
+    lop = lobj_create(jredis_server_cfg->head.name, NULL, sizeof(struct redisobj), jredis_server_cfg->head.ctxsize, &fx);
+    if (!lop) {
+        return;
+    }
+    robj = lobj_body(struct redisobj *, lop);
+
+    // freeproc and vwrite proc can not be covered
+    sym.touchproc_sym = jredis_server_cfg->head.touchproc;
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = jredis_server_cfg->head.writeproc;
+    sym.vwriteproc_sym = NULL;
+    sym.readproc_sym = jredis_server_cfg->head.readproc;
+    sym.vreadproc_sym = jredis_server_cfg->head.vreadproc;
+    sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
+    sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
+    lobj_fx_cover(lop, &sym);
+
+    do {
+        robj->el = el;
+        status = netobj_parse_endpoint(jredis_server_cfg->host, &robj->host);
+        if (NSP_SUCCESS(status)) {
+            robj->c = redisAsyncConnect(robj->host.ip, robj->host.port);
+        } else {
+            strcpy(robj->domain, jredis_server_cfg->host);
+            robj->c = redisAsyncConnectUnix(robj->domain);
+        }
+        if (!robj->c) {
+            printf("Connection error: can't allocate redis context\n");
+            break;
+        }
+        
+        redisAsyncSetConnectCallback(robj->c, &__redisobj_on_connected);
+        redisAsyncSetDisconnectCallback(robj->c, &__redisobj_on_disconnect);
+        redisAeAttach(el, robj->c);
+
+        if (robj->c->err) {
+            printf("Connection error: %s\n", robj->c->errstr);
+            break;
+        }
+
+        return;
+    } while(0);
+
+    lobj_ldestroy(lop);
 }
 
 static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *vsize)
 {
-    struct redisobj_na *redis_server_objna;
+    struct redisobj_na *robjna;
     redisReply *reply;
     int retval;
 
@@ -77,12 +175,12 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
         return -1;
     }
 
-    redis_server_objna = lobj_body(struct redisobj_na *, lop);
-    if (!redis_server_objna) {
+    robjna = lobj_body(struct redisobj_na *, lop);
+    if (!robjna) {
         return -1;
     }
 
-    reply = (redisReply *)redisCommandArgv(redis_server_objna->c, elements - 1, (const char **)vdata, vsize);
+    reply = (redisReply *)redisCommandArgv(robjna->c, elements - 1, (const char **)vdata, vsize);
     if (!reply) {
         return -1;
     }
@@ -115,19 +213,19 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
 
 static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vdata, size_t *vsize)
 {
-    struct redisobj_na *redis_server_objna;
+    struct redisobj_na *robjna;
     redisReply *reply;
 
     if (!lop || !vdata || !vsize) {
         return -1;
     }
 
-    redis_server_objna = lobj_body(struct redisobj_na *, lop);
-    if (!redis_server_objna) {
+    robjna = lobj_body(struct redisobj_na *, lop);
+    if (!robjna) {
         return -1;
     }
 
-    reply = (redisReply *)redisCommandArgv(redis_server_objna->c, elements, (const char **)vdata, vsize);
+    reply = (redisReply *)redisCommandArgv(robjna->c, elements, (const char **)vdata, vsize);
     if (!reply) {
         return -1;
     }
@@ -141,95 +239,55 @@ static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vda
     return 0;
 }
 
-extern int redisAeAttach(aeEventLoop *loop, redisAsyncContext *ac);
-
-static void __redisobj_on_connected(const redisAsyncContext *c, int status)
+static int __redisobj_write_na(struct lobj *lop, const void *data, size_t n)
 {
-    printf("Connected...\n");
-}
+    struct redisobj_na *robjna;
+    redisReply *reply;
 
-static void __redisobj_on_disconnect(const redisAsyncContext *c, int status)
-{
-    printf("Disconnected...\n");
-}
-
-void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
-{
-    struct lobj_fx fx = {
-        .freeproc = &__redisobj_free,
-        .writeproc = NULL,
-        .vwriteproc = &__redisobj_vwrite,
-        .readproc = NULL,
-        .vreadproc = NULL,
-    };
-    struct lobj_fx_sym sym = { NULL };
-    lobj_pt lop;
-    struct redisobj *redis_server_obj;
-    nsp_status_t status;
-
-    lop = lobj_create(jredis_server_cfg->head.name, NULL, sizeof(struct redisobj), jredis_server_cfg->head.ctxsize, &fx);
-    if (!lop) {
-        return;
+    if (!lop || !data || 0 == n) {
+        return -1;
     }
-    redis_server_obj = lobj_body(struct redisobj *, lop);
 
-    // freeproc and vwrite proc can not be covered
-    sym.touchproc_sym = jredis_server_cfg->head.touchproc;
-    sym.freeproc_sym = NULL;
-    sym.writeproc_sym = jredis_server_cfg->head.writeproc;
-    sym.vwriteproc_sym = NULL;
-    sym.readproc_sym = jredis_server_cfg->head.readproc;
-    sym.vreadproc_sym = jredis_server_cfg->head.vreadproc;
-    sym.recvdataproc_sym = jredis_server_cfg->head.recvdataproc;
-    sym.rawinvokeproc_sym = jredis_server_cfg->head.rawinvokeproc;
-    lobj_fx_cover(lop, &sym);
+    robjna = lobj_body(struct redisobj_na *, lop);
+    if (!robjna) {
+        return -1;
+    }
 
-    do {
-        status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_obj->host);
-        if (!NSP_SUCCESS(status)) {
-            break;
-        }
+    if (REDIS_OK != redisAppendFormattedCommand(robjna->c, (const char *)data, n)) {
+        return -1;
+    }
 
-        redis_server_obj->el = el;
-        redis_server_obj->c = redisAsyncConnect(redis_server_obj->host.ip, redis_server_obj->host.port);
-        if (!redis_server_obj->c) {
-            printf("Connection error: can't allocate redis context\n");
-            break;
-        }
-        redisAeAttach(el, redis_server_obj->c);
-        redisAsyncSetConnectCallback(redis_server_obj->c, &__redisobj_on_connected);
-        redisAsyncSetDisconnectCallback(redis_server_obj->c, &__redisobj_on_disconnect);
+    if (REDIS_OK != redisGetReply(robjna->c, (void **)&reply)) {
+        return -1;
+    }
+    if (reply->type == REDIS_REPLY_ERROR) {
+        printf("Error: %s\n", reply->str);
+        freeReplyObject(reply);
+        return -1;
+    }
 
-        if (redis_server_obj->c->err) {
-            printf("Connection error: %s\n", redis_server_obj->c->errstr);
-            break;
-        }
-
-        return;
-    } while(0);
-
-    lobj_ldestroy(lop);
+    return 0;
 }
 
 extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
 {
     struct lobj_fx fx = {
         .freeproc = &__redisobj_free_na,
-        .writeproc = NULL,
+        .writeproc = &__redisobj_write_na,
         .vwriteproc = &__redisobj_vwrite_na,
         .readproc = NULL,
         .vreadproc = &__redisobj_vread_na,
     };
     struct lobj_fx_sym sym = { NULL };
     lobj_pt lop;
-    struct redisobj_na *redis_server_objna;
+    struct redisobj_na *robjna;
     nsp_status_t status;
 
     lop = lobj_create(jredis_server_cfg->head.name, NULL, sizeof(struct redisobj_na), jredis_server_cfg->head.ctxsize, &fx);
     if (!lop) {
         return;
     }
-    redis_server_objna = lobj_body(struct redisobj_na *, lop);
+    robjna = lobj_body(struct redisobj_na *, lop);
 
     // freeproc/vwrite/vread proc can not be covered
     sym.touchproc_sym = jredis_server_cfg->head.touchproc;
@@ -243,23 +301,23 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
     lobj_fx_cover(lop, &sym);
 
     do {
-        status = netobj_parse_endpoint(jredis_server_cfg->host, &redis_server_objna->host);
+        status = netobj_parse_endpoint(jredis_server_cfg->host, &robjna->host);
         if (!NSP_SUCCESS(status)) {
             break;
         }
 
-        redis_server_objna->el = el;
-        redis_server_objna->c = redisConnect(redis_server_objna->host.ip, redis_server_objna->host.port);
-        if (!redis_server_objna->c) {
+        robjna->el = el;
+        robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
+        if (!robjna->c) {
             printf("Connection error: can't allocate redis context\n");
             break;
         }
 
-        if (redis_server_objna->c->err) {
-            if (redis_server_objna->c->errstr && redis_server_objna->c->errstr[0]) {
-                printf("Connection error: %s\n", redis_server_objna->c->errstr);
+        if (robjna->c->err) {
+            if (robjna->c->errstr && robjna->c->errstr[0]) {
+                printf("Connection error: %s\n", robjna->c->errstr);
             } else {
-                printf("Connection error: %d\n", redis_server_objna->c->err);
+                printf("Connection error: %d\n", robjna->c->err);
             }
             break;
         }
