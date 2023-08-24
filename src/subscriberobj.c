@@ -22,7 +22,7 @@ struct subscriberobj
     size_t channels;
 };
 
-static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *priveData)
+static void __on_subscribed(struct redisAsyncContext *ac, void *r, void *priveData)
 {
     lobj_pt lop;
     struct subscriberobj *subobj;
@@ -41,7 +41,7 @@ static void __redisCallbackFn(struct redisAsyncContext *ac, void *r, void *prive
         }
         return;
     }
-    
+
     reply = (redisReply *)r;
     if (!reply) {
         printf("subscriber asynchronous reply not exist\n");
@@ -93,7 +93,7 @@ static void __do_subscriberobj(lobj_pt lop)
         return;
     }
 
-    vdata[0] = (const char *)&__redisCallbackFn;
+    vdata[0] = (const char *)&__on_subscribed;
     vsize[0] = sizeof(void *);
     vdata[1] = (void *)lobj_get_seq(lop);
     vsize[1] = sizeof(void *);

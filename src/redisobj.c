@@ -8,16 +8,17 @@
 
 struct redisobj
 {
+    redisAsyncContext *c;
     struct endpoint host;
     char domain[128];
-    redisAsyncContext *c;
     aeEventLoop *el;
 };
 
 struct redisobj_na
 {
-    struct endpoint host;
     redisContext *c;
+    struct endpoint host;
+    char domain[128];
     aeEventLoop *el;
 };
 
@@ -149,7 +150,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
             printf("Connection error: can't allocate redis context\n");
             break;
         }
-        
+
         redisAsyncSetConnectCallback(robj->c, &__redisobj_on_connected);
         redisAsyncSetDisconnectCallback(robj->c, &__redisobj_on_disconnect);
         redisAeAttach(el, robj->c);
@@ -302,12 +303,12 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
 
     do {
         status = netobj_parse_endpoint(jredis_server_cfg->host, &robjna->host);
-        if (!NSP_SUCCESS(status)) {
-            break;
+        if (NSP_SUCCESS(status)) {
+            robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
+        } else {
+            strcpy(robjna->domain, jredis_server_cfg->host);
+            robjna->c = redisConnectUnix(robjna->domain);
         }
-
-        robjna->el = el;
-        robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
         if (!robjna->c) {
             printf("Connection error: can't allocate redis context\n");
             break;

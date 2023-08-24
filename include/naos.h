@@ -37,4 +37,15 @@ PORTABLEAPI(void) naos_hexdump(const unsigned char *buffer, uint16_t length, uin
  * warning: after this method called, source buffer which pointer to by @cmdline are already been destroied(the splitor space are overridden by \0) */
 PORTABLEAPI(int) naos_cmdline_like_analyze(char *cmdline, char **target, int max);
 
+/**
+ * Splits a string into pieces using a separator and stores the pieces in an array.
+ *
+ * @param origin The string to be split.
+ * @param separator The separator used to split the string.
+ * @param divided An array to store the pieces of the split string.
+ * @param max_piece The maximum number of pieces to be stored in the array.
+ * @return The number of pieces stored in the array.
+ */
+PORTABLEAPI(unsigned int) naos_split_text(char *restrict origin, const char *restrict separator, char **divided, unsigned int max_piece);
+
 #endif

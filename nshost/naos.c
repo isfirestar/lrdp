@@ -201,7 +201,7 @@ PORTABLEIMPL(void) naos_hexdump(const unsigned char *buffer, uint16_t length, ui
     zfree(display);
 }
 
-int naos_cmdline_like_analyze(char *cmdline, char **target, int max)
+PORTABLEIMPL(int) naos_cmdline_like_analyze(char *cmdline, char **target, int max)
 {
     int count;
     char *cursor;
@@ -250,4 +250,25 @@ int naos_cmdline_like_analyze(char *cmdline, char **target, int max)
     }
 
     return count;
+}
+
+PORTABLEIMPL(unsigned int) naos_split_text(char *restrict origin, const char *restrict separator, char **divided, unsigned int max_piece)
+{
+    char *nextToken, *p;
+    unsigned int i;
+
+    if (!origin || !separator || 0 == max_piece) {
+        return 0;
+    }
+
+    i = 0;
+    nextToken = NULL;
+    while (NULL != (p = strtok_r(nextToken ? NULL : origin, separator, &nextToken)) && i < max_piece) {
+        if (divided) {
+            divided[i] = p;
+        }
+        ++i;
+    }
+
+    return i;
 }
