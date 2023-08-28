@@ -320,13 +320,13 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
             break;
         }
 
-        if (robj->c->err) {
-            if (REDIS_ERR_IO == robj->c->err) {
+        if (robjna->c->err) {
+            if (REDIS_ERR_IO == robjna->c->err) {
                 lrdp_generic_error("Connection error: %s", strerror(errno));
-            } else if (robj->c->errstr && robj->c->errstr[0]) {
-                lrdp_generic_error("Connection error: %s", robj->c->errstr);
+            } else if (robj->c->errstr && robjna->c->errstr[0]) {
+                lrdp_generic_error("Connection error: %s", robjna->c->errstr);
             } else {
-                lrdp_generic_error("Connection error: %d", robj->c->err);
+                lrdp_generic_error("Connection error: %d", robjna->c->err);
             }
             break;
         }
