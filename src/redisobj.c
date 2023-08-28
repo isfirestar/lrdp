@@ -156,7 +156,13 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         redisAeAttach(el, robj->c);
 
         if (robj->c->err) {
-            printf("Connection error: %s\n", robj->c->errstr);
+            if (REDIS_ERR_IO == robj->c->err) {
+                lrdp_generic_error("Connection error: %s", strerror(errno));
+            } else if (robj->c->errstr && robj->c->errstr[0]) {
+                lrdp_generic_error("Connection error: %s", robj->c->errstr);
+            } else {
+                lrdp_generic_error("Connection error: %d", robj->c->err);
+            }
             break;
         }
 
@@ -314,11 +320,13 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
             break;
         }
 
-        if (robjna->c->err) {
-            if (robjna->c->errstr && robjna->c->errstr[0]) {
-                printf("Connection error: %s\n", robjna->c->errstr);
+        if (robj->c->err) {
+            if (REDIS_ERR_IO == robj->c->err) {
+                lrdp_generic_error("Connection error: %s", strerror(errno));
+            } else if (robj->c->errstr && robj->c->errstr[0]) {
+                lrdp_generic_error("Connection error: %s", robj->c->errstr);
             } else {
-                printf("Connection error: %d\n", robjna->c->err);
+                lrdp_generic_error("Connection error: %d", robj->c->err);
             }
             break;
         }
