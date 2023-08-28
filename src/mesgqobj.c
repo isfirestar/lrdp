@@ -19,7 +19,7 @@ static void __mesgq_free(lobj_pt lop, void *context, size_t ctxsize)
     struct mesgq_item *mesgq;
 
     mesgq = lobj_body(struct mesgq_item *, lop);
-    if (mesgq->fd) {
+    if (mesgq->fd  && mesgq->el) {
         if (!mesgq->na) {
             aeDeleteFileEvent(mesgq->el, mesgq->fd, AE_READABLE);
         }
