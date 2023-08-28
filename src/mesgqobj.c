@@ -8,8 +8,8 @@ struct mesgq_item
     mqd_t fd;
     aeEventLoop *el;
     char mqname[64];
-    unsigned int maxmsg;
-    unsigned int msgsize;
+    long maxmsg;
+    long msgsize;
     unsigned int method;
     int na;
 };
@@ -127,6 +127,15 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         if (!NSP_SUCCESS(status)) {
             printf("failed on open named messageq [%s], error status:%ld\n", jmesgq->mqname, status);
             break;
+        }
+
+        if (jmesgq->method == MESGQ_OPEN_ALWAYS || jmesgq->method == MESGQ_OPEN_EXISTING) {
+            // get message queue info
+            status = mesgq_getattr(mesgq->fd, &mesgq->maxmsg, &mesgq->msgsize, NULL);
+            if (!NSP_SUCCESS(status)) {
+                lrdp_generic_error("failed on get named messageq [%s] info, error status:%ld", jmesgq->mqname, status);
+                break;
+            }
         }
 
         // free/read/write proc can not be covered
