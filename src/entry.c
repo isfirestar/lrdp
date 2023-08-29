@@ -12,6 +12,7 @@
 #include "epollobj.h"
 #include "mesgqobj.h"
 #include "aeobj.h"
+#include "print.h"
 
 static void __lrdp_load_lwp()
 {
@@ -44,13 +45,10 @@ static void __lrdp_load_tty(aeEventLoop *el)
     jconf_tty_pt jttycfg = NULL;
     jconf_iterator_pt iterator;
     unsigned int count;
-    lobj_pt ttylop;
 
     iterator = jconf_tty_get_iterator(&count);
     while (NULL != (iterator = jconf_tty_get(iterator, &jttycfg))) {
-        if (NULL != (ttylop = ttyobj_create(jttycfg))) {
-            ttyobj_add_file(el, ttylop);
-        }
+        ttyobj_create(jttycfg, el);
     }
     jconf_tty_free();
 }
@@ -76,7 +74,7 @@ static void __lrdp_load_redisserver(aeEventLoop *el)
 
     iterator = jconf_redis_server_get_iterator(&count);
     while (NULL != (iterator = jconf_redis_server_get(iterator, &jredis_server_cfg))) {
-        (jredis_server_cfg->na) ? redisobj_create_na(jredis_server_cfg, el) : redisobj_create(jredis_server_cfg, el);
+        (jredis_server_cfg->na) ? redisobj_create_na(jredis_server_cfg) : redisobj_create(jredis_server_cfg, el);
     }
     jconf_redis_server_free();
 }
@@ -150,7 +148,7 @@ int main(int argc, char *argv[])
     /* read json config and load parameters */
     status = jconf_initial_load(argv[1]);
     if (!NSP_SUCCESS(status)) {
-        printf("jconf_initial_load failed, status = %ld\n", status);
+        lrdp_generic_error("jconf_initial_load failed, status = %ld", status);
         return 1;
     }
     jentry = jconf_entry_get();
@@ -167,7 +165,6 @@ int main(int argc, char *argv[])
     /* initial event loop */
     aelop = aeobj_create("ae-mloop", NULL, 100);
     if (!aelop) {
-        printf("aeobj_create failed\n");
         return 1;
     }
     el = aeobj_getel(aelop);
@@ -175,13 +172,12 @@ int main(int argc, char *argv[])
     /* load entry module */
     mlop = mloop_create(jentry);
     if (!mlop) {
-        printf("mloop_initial failed\n");
         return 1;
     }
 
     /* pre-init applicate */
     if (0 != mloop_pre_init(mlop, argc - 2, argv + 2)) {
-        printf("mainloop pre-initial failed\n");
+        lrdp_generic_error("Mainloop pre-initial proc prevent program running.");
         return 1;
     }
 

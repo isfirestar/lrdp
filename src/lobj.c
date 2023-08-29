@@ -7,6 +7,8 @@
 #include "rand.h"
 #include "spinlock.h"
 
+#include "print.h"
+
 enum lobj_status
 {
     LOS_NORMAL = 0,
@@ -221,7 +223,7 @@ static void *__lobj_create_module(const char *module)
 
     lop->handle = ifos_dlopen(module);
     if (!lop->handle) {
-        printf("%s\n", ifos_dlerror());
+        lrdp_generic_warning("%s", ifos_dlerror());
     } else {
         dl_main = ifos_dlsym(lop->handle, "dl_main");
         if (dl_main) {
@@ -247,6 +249,7 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
 
     lop = (lobj_pt)ztrycalloc(sizeof(lobj_t) + size);
     if (!lop) {
+        lrdp_generic_warning("Insufficient memory to create lobj [%s]", name ? name : "anonymous");
         return NULL;
     }
 
@@ -280,6 +283,7 @@ lobj_pt lobj_create(const char *name, const char *module, size_t size, size_t ct
     if (lop->ctxsize > 0) {
         lop->ctx = (unsigned char *)ztrycalloc(lop->ctxsize);
         if (!lop->ctx) {
+            lrdp_generic_warning("Insufficient memory to create lobj [%s] context", lop->name);
             lop->ctxsize = 0; /* failed on context allocation didn't affect process continue */
         }
     }
@@ -306,6 +310,7 @@ lobj_pt lobj_dup(const char *name, const lobj_pt olop)
 
     lop = (lobj_pt)ztrycalloc(sizeof(lobj_t) + olop->size);
     if (!lop) {
+        lrdp_generic_warning("Insufficient memory to create lobj");
         return NULL;
     }
 
@@ -333,6 +338,8 @@ static void __lobj_finalize(lobj_pt lop)
     if (!lop) {
         return;
     }
+
+    lrdp_generic_info("Object [%s] is being destroyed", lop->name);
 
     if (lop->fx.freeproc) {
         lop->fx.freeproc(lop, lop->ctx, lop->ctxsize);

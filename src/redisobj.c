@@ -1,10 +1,11 @@
 #include "redisobj.h"
 
-#include "netobj.h"
-
 #include "hiredis.h"
 #include "async.h"
 #include "ae.h"
+#include "print.h"
+
+#include "netobj.h"
 
 struct redisobj
 {
@@ -98,12 +99,12 @@ extern int redisAeAttach(aeEventLoop *loop, redisAsyncContext *ac);
 
 static void __redisobj_on_connected(const redisAsyncContext *c, int status)
 {
-    printf("Connected...\n");
+    lrdp_generic_error("Connect to redis server %s", c->c.connection_type == REDIS_CONN_UNIX ? c->c.unix_sock.path : c->c.tcp.host);
 }
 
 static void __redisobj_on_disconnect(const redisAsyncContext *c, int status)
 {
-    printf("Disconnected...\n");
+    lrdp_generic_error("Disconnected to redis server %s", c->c.connection_type == REDIS_CONN_UNIX ? c->c.unix_sock.path : c->c.tcp.host);
 }
 
 void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
@@ -146,8 +147,9 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
             strcpy(robj->domain, jredis_server_cfg->host);
             robj->c = redisAsyncConnectUnix(robj->domain);
         }
+
         if (!robj->c) {
-            printf("Connection error: can't allocate redis context\n");
+            lrdp_generic_error("Connection error: can't allocate redis context");
             break;
         }
 
@@ -195,7 +197,7 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
     retval = -1;
     switch (reply->type) {
         case REDIS_REPLY_ERROR:
-            printf("Error: %s\n", reply->str);
+            lrdp_generic_error("Reply error: %s", reply->str);
             break;
         case REDIS_REPLY_INTEGER:
             if (vsize[elements - 1] >= sizeof(long long)) {
@@ -238,7 +240,7 @@ static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vda
     }
 
     if (reply->type == REDIS_REPLY_ERROR) {
-        printf("Error: %s\n", reply->str);
+        lrdp_generic_error("error: %s", reply->str);
         freeReplyObject(reply);
         return -1;
     }
@@ -268,7 +270,7 @@ static int __redisobj_write_na(struct lobj *lop, const void *data, size_t n)
         return -1;
     }
     if (reply->type == REDIS_REPLY_ERROR) {
-        printf("Error: %s\n", reply->str);
+        lrdp_generic_error("Error: %s", reply->str);
         freeReplyObject(reply);
         return -1;
     }
@@ -276,7 +278,7 @@ static int __redisobj_write_na(struct lobj *lop, const void *data, size_t n)
     return 0;
 }
 
-extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
+extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
 {
     struct lobj_fx fx = {
         .freeproc = &__redisobj_free_na,
@@ -316,14 +318,14 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg, ae
             robjna->c = redisConnectUnix(robjna->domain);
         }
         if (!robjna->c) {
-            printf("Connection error: can't allocate redis context\n");
+            lrdp_generic_error("Connection error: can't allocate redis context");
             break;
         }
 
         if (robjna->c->err) {
             if (REDIS_ERR_IO == robjna->c->err) {
                 lrdp_generic_error("Connection error: %s", strerror(errno));
-            } else if (robj->c->errstr && robjna->c->errstr[0]) {
+            } else if (robjna->c->errstr && robjna->c->errstr[0]) {
                 lrdp_generic_error("Connection error: %s", robjna->c->errstr);
             } else {
                 lrdp_generic_error("Connection error: %d", robjna->c->err);

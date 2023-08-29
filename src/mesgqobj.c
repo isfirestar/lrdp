@@ -1,7 +1,9 @@
 #include "mesgqobj.h"
 
+#include "zmalloc.h"
 #include "mesgq.h"
 #include "jconf.h"
+#include "print.h"
 
 struct mesgq_item
 {
@@ -12,6 +14,7 @@ struct mesgq_item
     long msgsize;
     unsigned int method;
     int na;
+    char *recvbuf;
 };
 
 static void __mesgq_free(lobj_pt lop, void *context, size_t ctxsize)
@@ -19,11 +22,16 @@ static void __mesgq_free(lobj_pt lop, void *context, size_t ctxsize)
     struct mesgq_item *mesgq;
 
     mesgq = lobj_body(struct mesgq_item *, lop);
-    if (mesgq->fd  && mesgq->el) {
-        if (!mesgq->na) {
+
+    if (mesgq->fd) {
+        if (!mesgq->na && mesgq->el) {
             aeDeleteFileEvent(mesgq->el, mesgq->fd, AE_READABLE);
         }
         mesgq_close(mesgq->fd);
+    }
+
+    if (mesgq->recvbuf) {
+        zfree(mesgq->recvbuf);
     }
 }
 
@@ -59,18 +67,24 @@ static int __mesgq_vwrite(lobj_pt lop, int elements, const void **vdata, size_t 
 
 static void __mesgq_ae_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
 {
+    struct mesgq_item *mesgq;
     lobj_pt lop;
-    char buf[1024];
     int n;
 
     lop = (lobj_pt)clientData;
+    mesgq = lobj_body(struct mesgq_item *, lop);
 
-    n = mesgq_recvmsg(fd, buf, sizeof(buf), NULL, -1);
+    if (!mesgq->recvbuf) {
+        return;
+    }
+
+    n = mesgq_recvmsg(fd, mesgq->recvbuf, mesgq->msgsize, NULL, -1);
     if (n > 0) {
-        lobj_fx_on_recvdata(lop, buf, n);
+        lobj_fx_on_recvdata(lop, mesgq->recvbuf, n);
     } else if (n < 0) {
-        if (errno != EAGAIN) {
-            aeDeleteFileEvent(el, fd, AE_READABLE);
+        if (n != -EAGAIN) {
+            lrdp_generic_error("Failed on read from named mq, error:%d", n);
+            lobj_ldestroy(lop);
         }
     } else {
         ;
@@ -81,7 +95,6 @@ int __mesgq_read(lobj_pt lop, void *data, size_t n)
 {
     struct mesgq_item *mesgq;
     mqd_t fd;
-    char buf[1024];
 
     mesgq = lobj_body(struct mesgq_item *, lop);
     fd = mesgq->fd;
@@ -90,11 +103,11 @@ int __mesgq_read(lobj_pt lop, void *data, size_t n)
         return -1;
     }
 
-    if (n > sizeof(buf)) {
-        n = sizeof(buf);
+    if (n > mesgq->msgsize) {
+        n = mesgq->msgsize;
     }
 
-    return mesgq_recvmsg(fd, buf, n, NULL, -1);
+    return mesgq_recvmsg(fd, data, n, NULL, -1);
 }
 
 lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
@@ -125,17 +138,15 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         // open message queue
         status = mesgq_open(jmesgq->mqname, jmesgq->method, jmesgq->maxmsg, jmesgq->msgsize, &mesgq->fd);
         if (!NSP_SUCCESS(status)) {
-            printf("failed on open named messageq [%s], error status:%ld\n", jmesgq->mqname, status);
+            lrdp_generic_error("Failed on open named messageq [%s], error status:%ld", jmesgq->mqname, status);
             break;
         }
 
-        if (jmesgq->method == MESGQ_OPEN_ALWAYS || jmesgq->method == MESGQ_OPEN_EXISTING) {
-            // get message queue info
-            status = mesgq_getattr(mesgq->fd, &mesgq->maxmsg, &mesgq->msgsize, NULL);
-            if (!NSP_SUCCESS(status)) {
-                lrdp_generic_error("failed on get named messageq [%s] info, error status:%ld", jmesgq->mqname, status);
-                break;
-            }
+        // retrieve the mq attributes no matter what the creation method it is
+        status = mesgq_getattr(mesgq->fd, &mesgq->maxmsg, &mesgq->msgsize, NULL);
+        if (!NSP_SUCCESS(status)) {
+            lrdp_generic_error("Failed on get named messageq [%s] info, error status:%ld", jmesgq->mqname, status);
+            break;
         }
 
         // free/read/write proc can not be covered
@@ -153,13 +164,20 @@ lobj_pt mesgqobj_create(const jconf_mesgqobj_pt jmesgq, aeEventLoop *el)
         if (!jmesgq->na && el) {
             status = mesgq_set_nonblocking(mesgq->fd);
             if (!NSP_SUCCESS(status)) {
-                printf("failed mark named mq [%s] to non-blocking, error status:%ld\n", jmesgq->mqname, status);
+                lrdp_generic_error("Failed mark named mq [%s] to non-blocking, error status:%ld", jmesgq->mqname, status);
                 break;
             }
             // save ae target
             mesgq->el = el;
             // attach to ae
             aeCreateFileEvent(el, mesgq->fd, AE_READABLE, &__mesgq_ae_read, lop);
+        }
+
+        // allocate recv buffer
+        mesgq->recvbuf = (char *)ztrymalloc(mesgq->msgsize);
+        if (!mesgq->recvbuf) {
+            lrdp_generic_error("Insufficient memory for MQ receive buffer which size is:%ld", mesgq->msgsize);
+            break;
         }
         return lop;
     } while(0);

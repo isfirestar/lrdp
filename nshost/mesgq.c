@@ -160,9 +160,6 @@ int mesgq_recvmsg(mqd_t mqfd, char *msg, size_t msg_len, unsigned int *prio, int
     }
 
     if (retb == -1) {
-        if (EAGAIN == errno) {
-            return EAGAIN;
-        }
         return posix__makeerror(errno);
     }
 

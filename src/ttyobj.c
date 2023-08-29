@@ -1,6 +1,7 @@
 #include "ttyobj.h"
 
 #include "threading.h"
+#include "print.h"
 
 #include <fcntl.h>
 #include <unistd.h>
@@ -103,11 +104,10 @@ static void __ttyobj_on_free(struct lobj *lop, void *context, size_t ctxsize)
         return;
     }
 
-    if (ttyp->el) {
-        aeDeleteFileEvent(ttyp->el, ttyp->fd, AE_READABLE);
-    }
-
     if (ttyp->fd > 0) {
+        if (ttyp->el) {
+            aeDeleteFileEvent(ttyp->el, ttyp->fd, AE_READABLE);
+        }
         close(ttyp->fd);
     }
 
@@ -150,7 +150,35 @@ static int __ttyobj_read_na(lobj_pt lop, void *data, size_t n)
     return retval;
 }
 
-lobj_pt ttyobj_create(const jconf_tty_pt jtty)
+static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
+{
+    lobj_pt lop;
+    struct ttyobj *ttyp;
+    char buf[1024];
+    ssize_t n;
+
+    lop = (lobj_pt)clientData;
+    if (!lop) {
+        return;
+    }
+    ttyp = lobj_body(struct ttyobj *, lop);
+
+    lwp_mutex_lock(&ttyp->mutex);
+    n = read(fd, buf, sizeof(buf));
+    lwp_mutex_unlock(&ttyp->mutex);
+
+    if (n > 0) {
+        lobj_fx_on_recvdata(lop, buf, n);
+    } else if (n < 0) {
+        if (errno != EAGAIN) {
+            lobj_ldestroy(lop);
+        }
+    } else {
+        ;
+    }
+}
+
+lobj_pt ttyobj_create(const jconf_tty_pt jtty, struct aeEventLoop *el)
 {
     lobj_pt lop;
     struct ttyobj *ttyp;
@@ -189,12 +217,12 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         strncpy(ttyp->device, jtty->device, sizeof(ttyp->device) - 1);
         ttyp->fd = open(ttyp->device, O_RDWR | O_NOCTTY | O_NDELAY);
         if (ttyp->fd < 0) {
-            printf("open %s failed with code:%d\n", ttyp->device, errno);
+            lrdp_generic_error("Failed on open tty file: %s, error code:%d", ttyp->device, errno);
             break;
         }
 
         if (!isatty(ttyp->fd)) {
-            printf("framework cannot confirm the open file is a tty,code:%d\n", errno);
+            lrdp_generic_warning("Framework cannot confirm the open file is a tty,code:%d", errno);
         }
 
         // Get the current options for the port
@@ -220,7 +248,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
             ttyp->options.c_cflag |= PARENB;
             ttyp->options.c_cflag &= ~PARODD;
         } else {
-            printf("invalid parity %s\n", jtty->parity);
+            lrdp_generic_warning("Invalid parity %s", jtty->parity);
             break;
         }
 
@@ -230,7 +258,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
         } else if (2 == jtty->stopbits) {
             ttyp->options.c_cflag |= CSTOPB;
         } else {
-            printf("invalid stopbits %d\n", jtty->stopbits);
+            lrdp_generic_warning("Invalid stopbits %d", jtty->stopbits);
             break;
         }
 
@@ -248,7 +276,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
             ttyp->options.c_cflag &= ~CRTSCTS;
             ttyp->options.c_iflag &= ~(IXON | IXOFF | IXANY);
         }else {
-            printf("invalid flowcontrol %s\n", jtty->flowcontrol);
+            lrdp_generic_warning("Invalid flowcontrol %s", jtty->flowcontrol);
             break;
         }
 
@@ -268,56 +296,14 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty)
 
         // Set the new options for the port
         if (0 != tcsetattr(ttyp->fd, TCSANOW, &ttyp->options)) {
-            printf("ttyobj: %s set options failed\n", ttyp->device);
-            break;
+            lrdp_generic_warning("ttyobj: %s set options failed\n", ttyp->device);
         }
 
+        aeCreateFileEvent(el, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);
         return lop;
     } while(0);
 
     lobj_ldestroy(lop);
     return NULL;
 }
-
-static void __ttyobj_read(struct aeEventLoop *el, int fd, void *clientData, int mask)
-{
-    lobj_pt lop;
-    struct ttyobj *ttyp;
-    char buf[1024];
-    ssize_t n;
-
-    lop = (lobj_pt)clientData;
-    if (!lop) {
-        return;
-    }
-    ttyp = lobj_body(struct ttyobj *, lop);
-
-    lwp_mutex_lock(&ttyp->mutex);
-    n = read(fd, buf, sizeof(buf));
-    lwp_mutex_unlock(&ttyp->mutex);
-
-    if (n > 0) {
-        lobj_fx_on_recvdata(lop, buf, n);
-    } else if (n < 0) {
-        if (errno != EAGAIN) {
-            aeDeleteFileEvent(el, fd, AE_READABLE);
-            ttyp = lobj_body(struct ttyobj *, lop);
-            printf("ttyobj: %s read error: %s\n", ttyp->device, strerror(errno));
-        }
-    } else {
-        ;
-    }
-}
-
-void ttyobj_add_file(struct aeEventLoop *el, lobj_pt lop)
-{
-    struct ttyobj *ttyp;
-
-    ttyp = lobj_body(struct ttyobj *, lop);
-    ttyp->el = el;
-    if (ttyp->fd > 0) {
-        aeCreateFileEvent(el, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);
-    }
-}
-
 

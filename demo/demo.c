@@ -1,15 +1,14 @@
-#include <stdio.h>
 #include <time.h>
 #include <stdint.h>
 
-#include "ifos.h"
 #include "monotonic.h"
 #include "lobj.h"
 #include "zmalloc.h"
+#include "print.h"
 
 int dep_pre_init(lobj_pt lop, int argc, char **argv)
 {
-    printf("[%d] dep_pre_init\n", ifos_gettid());
+    lrdp_generic_info("dep_pre_init");
     return 0;
 }
 
@@ -22,7 +21,7 @@ void dep_post_init(lobj_pt lop)
 
     lopr = lobj_refer("myget");
     if (!lopr) {
-        printf("myget not found\n");
+        lrdp_generic_error("Object [myget] not found");
         return;
     }
 
@@ -36,13 +35,12 @@ void dep_post_init(lobj_pt lop)
     vsize[2] = sizeof(response);
 
     lobj_fx_vread(lopr, 3, (void **)vdata, vsize);
-
     lobj_derefer(lopr);
 }
 
 void dep_atexit(lobj_pt lop)
 {
-    printf("dep_atexit\n");
+    lrdp_generic_info("dep_atexit");
 }
 
 void dep_on_timer(lobj_pt lop)
@@ -54,7 +52,7 @@ void dep_on_timer(lobj_pt lop)
     context = NULL;
     ctxsize = lobj_get_context(lop, &context);
     if (!context) {
-        printf("[%d] dep_on_timer context is NULL\n", ifos_gettid());
+        lrdp_generic_error("dep_on_timer context is NULL");
         return;
     }
 
@@ -62,7 +60,7 @@ void dep_on_timer(lobj_pt lop)
     now = getMonotonicMs();
     *(uint64_t *)context = now;
 
-    printf("[%d] dep_on_timer ms diff: %lu\n", ifos_gettid(), now - previous);
+    lrdp_generic_info("dep_on_timer ms diff: %lu", now - previous);
 }
 
 void dep_debuger(lobj_pt lop)
@@ -74,7 +72,7 @@ void dep_debuger(lobj_pt lop)
     context = NULL;
     ctxsize = lobj_get_context(lop, &context);
     if (!context) {
-        printf("[%d] dep_on_timer context is NULL\n", ifos_gettid());
+        lrdp_generic_error("dep_on_timer context is NULL");
         return;
     }
 
@@ -82,7 +80,7 @@ void dep_debuger(lobj_pt lop)
     now = getMonotonicMs();
     *(uint64_t *)context = now;
 
-    printf("[%d] dep_debuger ms diff: %lu\n", ifos_gettid(), now - previous);
+    lrdp_generic_info("dep_debuger ms diff: %lu", now - previous);
 }
 
 void *dep_bg_exec(lobj_pt lop)
@@ -90,7 +88,7 @@ void *dep_bg_exec(lobj_pt lop)
     int i;
 
     for (i = 0; i < 1000; i++) {
-        printf("[%d] dep_bg_exec\n", ifos_gettid());
+        lrdp_generic_info("dep_bg_exec");
         sleep(1);
     }
 
@@ -108,7 +106,7 @@ void dep_tcp_on_received(lobj_pt lop, void *data, size_t size)
     memcpy(p, data, size);
     p[size] = '\0';
 
-    printf("[%d] dep_tcp_on_received : %s\n", ifos_gettid(), p);
+    lrdp_generic_info("dep_tcp_on_received : %s", p);
     zfree(p);
 
     sleep(1);
@@ -124,17 +122,17 @@ void dep_tcp_on_received(lobj_pt lop, void *data, size_t size)
 
 void dep_tcp_on_closed(lobj_pt lop)
 {
-    printf("[%d] dep_tcp_on_closed\n", ifos_gettid());
+    lrdp_generic_info("dep_tcp_on_closed");
 }
 
 void dep_tcp_on_accept(lobj_pt lop)
 {
-    printf("[%d] dep_tcp_on_accept\n", ifos_gettid());
+    lrdp_generic_info("dep_tcp_on_accept");
 }
 
 void dep_tcp_on_connected(lobj_pt lop)
 {
-    printf("[%d] dep_tcp_on_connected\n", ifos_gettid());
+    lrdp_generic_info("dep_tcp_on_connected");
 
     // send a simple packet to server
     lobj_fx_write(lop, "hello", 5);
@@ -151,6 +149,6 @@ void dep_mq_recv_data(lobj_pt lop, void *data, size_t size)
     memcpy(p, data, size);
     p[size] = '\0';
 
-    printf("[%d] dep_mq_recv_data : %s\n", ifos_gettid(), p);
+    lrdp_generic_info("dep_mq_recv_data : %s", p);
     zfree(p);
 }

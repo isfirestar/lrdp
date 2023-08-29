@@ -6,6 +6,7 @@
 #include "lobj.h"
 #include "zmalloc.h"
 #include "ifos.h"
+#include "print.h"
 
 #include <unistd.h>
 
@@ -29,22 +30,24 @@ static void __on_subscribed(struct redisAsyncContext *ac, void *r, void *priveDa
     redisReply *reply;
 
     if (!ac) {
-        printf("subscriber redis asynchronous callback without legal context.\n");
+        lrdp_generic_error("Subscriber redis asynchronous callback without legal context.");
         return;
     }
 
     if (ac->err) {
-        if (ac->errstr && ac->errstr[0]) {
-            printf("subscriber asynchronous error : %s\n", ac->errstr);
+        if (REDIS_ERR_IO == ac->err) {
+            lrdp_generic_error("Subscriber error: %s", strerror(errno));
+        } else if (ac->errstr && ac->errstr[0]) {
+            lrdp_generic_error("Subscriber error : %s", ac->errstr);
         } else {
-            printf("subscriber asynchronous error : %d\n", ac->err);
+            lrdp_generic_error("Subscriber error : %d", ac->err);
         }
         return;
     }
 
     reply = (redisReply *)r;
     if (!reply) {
-        printf("subscriber asynchronous reply not exist\n");
+        lrdp_generic_error("Subscriber reply not exist");
         return;
     }
 
@@ -83,12 +86,12 @@ static void __do_subscriberobj(lobj_pt lop)
     // (callback + privateData) + PUBLISH + channels
     vdata = (const char **)ztrycalloc(sizeof(char *) * vcount);
     if (!vdata) {
-        printf("[%d] __subscriberobj_bg ztrycalloc subscribeCmd error\n", ifos_gettid());
+        lrdp_generic_error("Insufficient memory for subscriber object.");
         return;
     }
     vsize = (size_t *)ztrycalloc(sizeof(size_t) * vcount);
     if (!vsize) {
-        printf("[%d] __subscriberobj_bg ztrycalloc subscribeCmdLen error\n", ifos_gettid());
+        lrdp_generic_error("Insufficient memory for subscriber object.");
         zfree(vdata);
         return;
     }
@@ -161,7 +164,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     // obtain redis server object by given name
     // if redis server not exist, subscriber object will not be created
     if (NULL == (redislop = lobj_refer(jsubcfg->redisserver))) {
-        printf("redis-server object %s for subscriber no found.\n", jsubcfg->redisserver);
+        lrdp_generic_error("Redis-server object %s for subscriber no found.", jsubcfg->redisserver);
         lobj_ldestroy(sublop);
         return;
     }
@@ -170,13 +173,14 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
     // load handler procedure
     subobj->execproc = lobj_dlsym(sublop, jsubcfg->execproc);
     if (!subobj->execproc) {
-        printf("failed open symbol %s, error : %s\n", jsubcfg->execproc, ifos_dlerror());
+        lrdp_generic_warning("Subscribe proc symbol %s no found, error : %s", jsubcfg->execproc, ifos_dlerror());
     }
 
     // allocate and save channels/patterns
     subobj->channels = jsubcfg->channels_count;
     subobj->channel = (struct subscribemsg *)ztrycalloc(sizeof(struct subscribemsg) * subobj->channels);
     if (!subobj->channel) {
+        lrdp_generic_error("Insufficient memory for subscriber channel.");
         lobj_ldestroy(sublop);
         lobj_derefer(redislop);
         return;
