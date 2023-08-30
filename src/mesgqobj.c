@@ -79,8 +79,10 @@ static void __mesgq_ae_read(struct aeEventLoop *el, int fd, void *clientData, in
     }
 
     n = mesgq_recvmsg(fd, mesgq->recvbuf, mesgq->msgsize, NULL, -1);
-    if (n > 0) 
-        mesgq->recvbuf[n] = 0;
+    if (n > 0) {
+        if (n < mesgq->msgsize) {
+            mesgq->recvbuf[n] = 0;
+        }
         lobj_fx_on_recvdata(lop, mesgq->recvbuf, n);
     } else if (n < 0) {
         if (n != -EAGAIN) {
