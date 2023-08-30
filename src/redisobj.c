@@ -99,7 +99,11 @@ extern int redisAeAttach(aeEventLoop *loop, redisAsyncContext *ac);
 
 static void __redisobj_on_connected(const redisAsyncContext *c, int status)
 {
-    lrdp_generic_error("Connect to redis server %s", c->c.connection_type == REDIS_CONN_UNIX ? c->c.unix_sock.path : c->c.tcp.host);
+    if (c->c.connection_type == REDIS_CONN_UNIX) {
+        lrdp_generic_info("Connected to unix domain %s", c->c.unix_sock.path);
+    } else {
+        lrdp_generic_info("Connect to %s:%d", c->c.tcp.host, c->c.tcp.port);
+    }
 }
 
 static void __redisobj_on_disconnect(const redisAsyncContext *c, int status)
