@@ -69,7 +69,7 @@ BUILD_DIR :=
 
 # invoke other makefile or subdirs, using this field in the top make entry
 INVOKE :=
-INVOKE_SETTINGS := CROSS_COMPILER_PREFIX=$(CROSS_COMPILER_PREFIX) ARCH=$(ARCH)
+INVOKE_SETTINGS := CROSS_COMPILER_PREFIX=$(CROSS_COMPILER_PREFIX) ARCH=$(ARCH) BUILD=$(BUILD)
 
 # both of below variable use to help you run shell script before/after gcc linker executive
 PRE_LINK_ORDER =
