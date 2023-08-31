@@ -296,7 +296,7 @@ lobj_pt ttyobj_create(const jconf_tty_pt jtty, struct aeEventLoop *el)
 
         // Set the new options for the port
         if (0 != tcsetattr(ttyp->fd, TCSANOW, &ttyp->options)) {
-            lrdp_generic_warning("ttyobj: %s set options failed\n", ttyp->device);
+            lrdp_generic_warning("ttyobj: %s set options failed", ttyp->device);
         }
 
         aeCreateFileEvent(el, ttyp->fd, AE_READABLE, &__ttyobj_read, lop);
