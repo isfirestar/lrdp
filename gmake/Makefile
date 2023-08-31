@@ -37,8 +37,20 @@ TARGET_TYPE := exe
 # $(BUILD) can be one of (debug, release) to change optimization pattern of this build, default to (release)
 BUILD := debug
 
+# target architecture, can be one of  (X64/X8664/IA64/X86_64, X86/I386, ARM/ARM32, ARM64)
+ARCH := X64
+
 # specify the cross compiler prefix string (arm-seev100-linux-gnueabihf-)
-CROSS_COMPILER_PREFIX :=
+ifneq ($(PLAT), )
+ifeq ($(PLAT), $(filter $(PLAT), h5 H5))
+ARCH = arm64
+CROSS_COMPILER_PREFIX = aarch64-himix100-linux-
+endif
+ifeq ($(PLAT), $(filter $(PLAT), h9 H9))
+ARCH = arm64
+CROSS_COMPILER_PREFIX = aarch64-himix210-linux-
+endif
+endif
 
 # user define complie-time options
 CFLAGS_ADDON :=
@@ -52,14 +64,12 @@ LIBRARYS := pthread rt dl m
 # user define link-time options
 LDFALGS_ADDON := -rdynamic
 
-# target architecture, can be one of  (X64/X8664/IA64/X86_64, X86/I386, ARM/ARM32, ARM64)
-ARCH := X64
-
 # directory to save intermediate file and output target ( ./build/ by default), path MUST end with slash
 BUILD_DIR :=
 
 # invoke other makefile or subdirs, using this field in the top make entry
 INVOKE :=
+INVOKE_SETTINGS := CROSS_COMPILER_PREFIX=$(CROSS_COMPILER_PREFIX) ARCH=$(ARCH)
 
 # both of below variable use to help you run shell script before/after gcc linker executive
 PRE_LINK_ORDER =
