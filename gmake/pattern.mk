@@ -138,8 +138,8 @@ detach:
 .invoke:
 	@for i in $(INVOKE); \
 	do \
-	if [ -f $$i ]; then $(MAKE) -f $$i $$@; fi;\
-	if [ -d $$i ]; then $(MAKE) -C $$i $$@; fi \
+	if [ -f $$i ]; then $(MAKE) -f $$i $$@ $(INVOKE_SETTINGS); fi;\
+	if [ -d $$i ]; then $(MAKE) -C $$i $$@ $(INVOKE_SETTINGS); fi \
 	done
 
 clean:
