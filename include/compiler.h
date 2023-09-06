@@ -364,6 +364,12 @@ static __always_inline int fls(int x) {
 }
 #endif
 
+static __always_inline int sigma(int n, int m)
+{
+	int c = m - n + 1;
+	return ((c & 1) == 0) ? ((n + m) * (c / 2)) : ((n + m) * (c / 2) + (n + m) / 2);
+}
+
 /**
  * fls64 - find last bit set in a 64-bit value
  * @n: the value to search
