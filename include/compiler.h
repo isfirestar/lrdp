@@ -397,6 +397,7 @@ static __always_inline uint64_t roundup_pow_of_two64(uint64_t x) {
 }
 #endif
 
+/* high performance calculation of the accumulation sum from n to m */
 static __always_inline int sigma(int n, int m)
 {
 	int c, l, r;
