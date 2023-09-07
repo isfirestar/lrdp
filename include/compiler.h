@@ -225,6 +225,9 @@ typedef int nsp_boolean_t;
     #define is_powerof_2(x) ((x) != 0 && (((x) & ((x) - 1)) == 0))
 #endif
 
+#define is_even_number(n) (((n) & 1) == 0)
+#define is_odd_number(n)  (((n) & 1) == 1)
+
 /* aligned definition */
 #if !defined __POSIX_TYPE_ALIGNED__
     #if _WIN32
