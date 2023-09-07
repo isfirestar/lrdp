@@ -367,23 +367,6 @@ static __always_inline int fls(int x) {
 }
 #endif
 
-static __always_inline int sigma(int n, int m)
-{
-	int c, l, r;
-
-	/* adjust left(small) and right(large) value */
-	l = n > m ? m : n;
-	r = n > m ? n : m;
-	/* calc count of item */
-	c = r - l + 1;
-	/* item count can be exact division by 2 */
-	if ( (c & 1) == 0 ) {
-		return (l + r) * (c / 2);
-	} else {
-		return (l + r) * (c / 2) + (l + r) / 2;
-	}
-}
-
 /**
  * fls64 - find last bit set in a 64-bit value
  * @n: the value to search
@@ -413,6 +396,23 @@ static __always_inline uint64_t roundup_pow_of_two64(uint64_t x) {
     return (uint64_t) 1 << fls64(x - 1);
 }
 #endif
+
+static __always_inline int sigma(int n, int m)
+{
+	int c, l, r;
+
+	/* adjust left(small) and right(large) value */
+	l = n > m ? m : n;
+	r = n > m ? n : m;
+	/* calc count of item */
+	c = r - l + 1;
+	/* item count can be exact division by 2 */
+	if ( (c & 1) == 0 ) {
+		return (l + r) * (c / 2);
+	} else {
+		return (l + r) * (c / 2) + (l + r) / 2;
+	}
+}
 
 static __always_inline void __read_once_size(const volatile void *p, void *res, int size) {
     switch (size) {
