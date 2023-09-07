@@ -4,7 +4,7 @@
 
 struct timerobj
 {
-    void (*timerproc)(lobj_pt lop);
+    int (*timerproc)(lobj_pt lop);
     unsigned int interval;
     long long evnid;
     aeEventLoop *el;
@@ -19,7 +19,10 @@ static int __timerobj_proc(struct aeEventLoop *eventLoop, long long id, void *cl
     timer = lobj_body(struct timerobj *, lop);
 
     if (timer->timerproc) {
-        timer->timerproc(lop);
+        if (0 != timer->timerproc(lop)) {
+            lobj_ldestroy(lop);
+            return 0;
+        }
     }
 
     return timer->interval;
@@ -30,7 +33,7 @@ static void __timerobj_atexit(lobj_pt lop, void *ctx, size_t ctxsize)
     struct timerobj *timer;
 
     timer = lobj_body(struct timerobj *, lop);
-    if (timer->evnid) {
+    if (timer->evnid >= 0) {
         aeDeleteTimeEvent(timer->el, timer->evnid);
     }
 }
