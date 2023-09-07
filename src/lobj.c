@@ -339,11 +339,11 @@ static void __lobj_finalize(lobj_pt lop)
         return;
     }
 
-    lrdp_generic_info("Object [%s] is being destroyed", lop->name);
-
     if (lop->fx.freeproc) {
         lop->fx.freeproc(lop, lop->ctx, lop->ctxsize);
     }
+
+    lrdp_generic_info("Lite object [%s] is has been destroyed", lop->name);
 
     if (lop->ctx) {
         zfree(lop->ctx);
