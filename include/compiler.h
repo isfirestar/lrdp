@@ -366,8 +366,19 @@ static __always_inline int fls(int x) {
 
 static __always_inline int sigma(int n, int m)
 {
-	int c = m - n + 1;
-	return ((c & 1) == 0) ? ((n + m) * (c / 2)) : ((n + m) * (c / 2) + (n + m) / 2);
+	int c, l, r;
+
+	/* adjust left(small) and right(large) value */
+	l = n > m ? m : n;
+	r = n > m ? n : m;
+	/* calc count of item */
+	c = r - l + 1;
+	/* item count can be exact division by 2 */
+	if ( (c & 1) == 0 ) {
+		return (l + r) * (c / 2);
+	} else {
+		return (l + r) * (c / 2) + (l + r) / 2;
+	}
 }
 
 /**
