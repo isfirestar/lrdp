@@ -148,7 +148,8 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         if (NSP_SUCCESS(status)) {
             robj->c = redisAsyncConnect(robj->host.ip, robj->host.port);
         } else {
-            strcpy(robj->domain, jredis_server_cfg->host);
+            robj->domain[sizeof(robj->domain) - 1] = '\0'; // ensure null-terminated
++           strncpy(robj->domain, jredis_server_cfg->host, sizeof(robj->domain) - 1);
             robj->c = redisAsyncConnectUnix(robj->domain);
         }
 
@@ -185,17 +186,17 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
     int retval;
 
     if (!lop || !vdata || !vsize || elements < 2) {
-        return -1;
+        return -EINVAL;
     }
 
     robjna = lobj_body(struct redisobj_na *, lop);
     if (!robjna) {
-        return -1;
+        return -ENODATA;
     }
 
     reply = (redisReply *)redisCommandArgv(robjna->c, elements - 1, (const char **)vdata, vsize);
     if (!reply) {
-        return -1;
+        return -ENOMEM;
     }
 
     retval = -1;
@@ -213,10 +214,17 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
             retval = min(reply->len, vsize[elements - 1]);
             memcpy(vdata[elements - 1], reply->str, retval);
             break;
+        case REDIS_REPLY_DOUBLE:
+            if (vsize[elements - 1] >= sizeof(double)) {
+                *((double *)&vdata[elements - 1]) = reply->dval;
+                retval = sizeof(double);
+            }
+            break;
         case REDIS_REPLY_NIL:
             retval = 0;
             break;
         default:
+            retval = -EPROTOTYPE;
             break;
     }
 
