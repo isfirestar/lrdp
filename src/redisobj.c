@@ -326,7 +326,8 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
         if (NSP_SUCCESS(status)) {
             robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
         } else {
-            strcpy(robjna->domain, jredis_server_cfg->host);
+            robjna->domain[sizeof(robjna->domain) - 1] = '\0'; // ensure null-terminated
++           strncpy(robjna->domain, jredis_server_cfg->host, sizeof(robjna->domain) - 1);
             robjna->c = redisConnectUnix(robjna->domain);
         }
         if (!robjna->c) {
