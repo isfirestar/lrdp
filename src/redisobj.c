@@ -251,19 +251,16 @@ static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vda
         return -1;
     }
 
-    if (reply->type == REDIS_REPLY_ERROR) {
-        lrdp_generic_error("error: %s", reply->str);
-        freeReplyObject(reply);
-        return -1;
-    }
-
-    return 0;
+    replyType = reply->type;
+    freeReplyObject(reply);
+    return (replyType == REDIS_REPLY_ERROR) ? -1 : 0;
 }
 
 static int __redisobj_write_na(struct lobj *lop, const void *data, size_t n)
 {
     struct redisobj_na *robjna;
     redisReply *reply;
+    int replyType;
 
     if (!lop || !data || 0 == n) {
         return -1;
@@ -281,13 +278,10 @@ static int __redisobj_write_na(struct lobj *lop, const void *data, size_t n)
     if (REDIS_OK != redisGetReply(robjna->c, (void **)&reply)) {
         return -1;
     }
-    if (reply->type == REDIS_REPLY_ERROR) {
-        lrdp_generic_error("Error: %s", reply->str);
-        freeReplyObject(reply);
-        return -1;
-    }
 
-    return 0;
+    replyType = reply->type;
+    freeReplyObject(reply);
+    return (replyType == REDIS_REPLY_ERROR) ? -1 : 0;
 }
 
 extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
