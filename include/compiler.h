@@ -403,6 +403,15 @@ static __always_inline int sigma_of_arithmetic_sequence(int left, int right, int
 	return n * (left + right) / 2;
 }
 
+/* Finds the specified term of the arithmetic sequence
+ paramter a1: the first term of the arithmetic sequence
+ paramter d: the common difference of the arithmetic sequence
+ paramter n: the specified term of the arithmetic sequence */
+static __always_inline int term_of_arithmetic_sequence(float a1, float d, int n)
+{
+    return a1 + d * (n - 1);
+}
+
 static __always_inline void __read_once_size(const volatile void *p, void *res, int size) {
     switch (size) {
         case 1: *(uint8_t *) res = *(volatile uint8_t *) p;
