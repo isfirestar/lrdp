@@ -66,6 +66,19 @@
         }
     },
 
+    "udp" : {
+        "udpsrv" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "recvdataproc" : "dep_udp_recv_data",
+            "bindon" : "0.0.0.0:10256"
+        },
+
+        "udpcli" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo.so",
+            "recvdataproc" : "dep_udp_recv_data"
+        }
+    },
+
     "redis-server" : {
         "mypub" : {
             "host" : "127.0.0.1:7777"

@@ -170,7 +170,7 @@ struct nis_tcp_data {
     } e;
 }__POSIX_TYPE_ALIGNED__;
 
-typedef struct nis_tcp_data tcp_data_t;
+typedef struct nis_tcp_data tcp_data_t, *tcp_data_pt;
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------
     UDP implement
@@ -201,7 +201,7 @@ struct nis_udp_data {
     } e;
 } __POSIX_TYPE_ALIGNED__;
 
-typedef struct nis_udp_data udp_data_t;
+typedef struct nis_udp_data udp_data_t, *udp_data_pt;
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------
     GRP implement

@@ -20,6 +20,7 @@ typedef struct lobj *lobj_pt;
 typedef void (*touch_pfn)(lobj_pt lop, void *userptr, size_t userptrlen);
 typedef void (*free_pfn)(lobj_pt lop, void *ctx, size_t ctxsize);
 typedef void (*recvdata_pfn)(lobj_pt lop, const void *data, size_t n);
+typedef void (*vrecvdata_pfn)(lobj_pt lop, int elements, const void **vdata, const size_t *vsize);
 typedef int (*write_pfn)(lobj_pt lop, const void *data, size_t n);
 typedef int (*vwrite_pfn)(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 typedef int (*read_pfn)(lobj_pt lop, void *data, size_t n);
@@ -35,6 +36,7 @@ struct lobj_fx
     read_pfn readproc;
     vread_pfn vreadproc;
     recvdata_pfn recvdataproc;
+    vrecvdata_pfn vrecvdataproc;
     rawinvoke_pfn rawinvokeproc;
 };
 
@@ -47,6 +49,7 @@ struct lobj_fx_sym
     char *readproc_sym;
     char *vreadproc_sym;
     char *recvdataproc_sym;
+    char *vrecvdataproc_sym;
     char *rawinvokeproc_sym;
 };
 
@@ -73,10 +76,11 @@ extern int lobj_fx_write(lobj_pt lop, const void *data, size_t n);
 extern int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize);
 extern int lobj_fx_read(lobj_pt lop, void *data, size_t n);
 extern int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n);
-extern void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n);
+extern int lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n);
+extern int lobj_fx_on_vrecvdata(lobj_pt lop, int elements, const void **vdata, const size_t *vsize);
 extern int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout);
 
-/* object helper function impls 
+/* object helper function impls
  *  follow by the dlsym implementations, we have ability to call other functions which shared by any other modules.
  *  1st, we declare a function potinter to by the target function and then load address from lop object.
  *  2nd, directly invoke function
@@ -93,7 +97,7 @@ extern void *lobj_dlsym(const lobj_pt lop, const char *sym);
 #define lobj_text2str(x) #x
 #define lobj_declare_pcall(lop, name, returntype, ...)   \
     returntype (*lobj_pcall_##name)(__VA_ARGS__) = (returntype (*)(__VA_ARGS__))lobj_dlsym(lop, lobj_text2str(name))
-    
+
 #define lobj_pcall(name, ...)   ((NULL != lobj_pcall_##name) ? lobj_pcall_##name(__VA_ARGS__) : 0)
 
 extern char *lobj_random_name(char *holder, size_t size);

@@ -38,6 +38,8 @@ static cJSON *__jconf_load_head(cJSON *jcursor, struct jconf_head *cfhead)
             strncpy(cfhead->vwriteproc, jnext->valuestring, sizeof(cfhead->vwriteproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "recvdataproc") && jnext->type == cJSON_String) {
             strncpy(cfhead->recvdataproc, jnext->valuestring, sizeof(cfhead->recvdataproc) - 1);
+        } else if (0 == strcasecmp(jnext->string, "vrecvdataproc") && jnext->type == cJSON_String) {
+            strncpy(cfhead->vrecvdataproc, jnext->valuestring, sizeof(cfhead->vrecvdataproc) - 1);
         } else if (0 == strcasecmp(jnext->string, "rawinvokeproc") && jnext->type == cJSON_String) {
             strncpy(cfhead->rawinvokeproc, jnext->valuestring, sizeof(cfhead->rawinvokeproc) - 1);
         } else if ( (0 == strcasecmp(jnext->string, "ctxsize") || 0 == strcasecmp(jnext->string, "contextsize") ) && jnext->type == cJSON_Number) {
@@ -90,6 +92,7 @@ static void __jconf_subscriber_load(cJSON *entry);
 static void __jconf_rawobj_load(cJSON *entry);
 static void __jconf_epollobj_load(cJSON *entry);
 static void __jconf_mesgqobj_load(cJSON *entry);
+static void __jconf_udpobj_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -158,6 +161,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_epollobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "mesgq")) {
                 __jconf_mesgqobj_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "udp")) {
+                __jconf_udpobj_load(jcursor);
             } else {
                 ;
             }
@@ -1252,6 +1257,103 @@ void jconf_aeobj_free()
 
     list_for_each_safe(cursor, next, &g_jaeobj_head) {
         inner = container_of(cursor, struct jconf_aeobj_inner, ele_of_inner_aeobj);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        UDPBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_udpobj_inner
+{
+    struct jconf_udpobj body;
+    struct list_head ele_of_inner_udpobj;
+};
+
+static struct list_head g_judpobj_head = { &g_judpobj_head, &g_judpobj_head };
+static unsigned int judpobj_count = 0;
+
+static void __jconf_udpobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jnext;
+    struct jconf_udpobj_inner *udpobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+            udpobj = ztrycalloc(sizeof(*udpobj));
+            if (!udpobj) {
+                break;
+            }
+
+            jnext = __jconf_load_head(jcursor, &udpobj->body.head);
+            while (jnext) {
+                if (0 == strcasecmp(jnext->string, "setsize") && jnext->type == cJSON_Number) {
+                    udpobj->body.setsize = jnext->valueint;
+                } if ( (0 == strcasecmp(jnext->string, "bindon") || 0 == strcasecmp(jnext->string, "local") ) && jnext->type == cJSON_String) {
+                    strncpy(udpobj->body.local, jnext->valuestring, sizeof(udpobj->body.local) - 1);
+                } else {
+                    ;
+                }
+                jnext = jnext->next;
+            }
+
+            list_add_tail(&udpobj->ele_of_inner_udpobj, &g_judpobj_head);
+            judpobj_count++;
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_udpobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = judpobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_judpobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_udpobj_get(jconf_iterator_pt iterator, jconf_udpobj_pt *judpobjs)
+{
+    struct list_head *cursor;
+    struct jconf_udpobj_inner *inner;
+
+    if (!iterator || !judpobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_judpobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_udpobj_inner, ele_of_inner_udpobj);
+    *judpobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_udpobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_udpobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_judpobj_head) {
+        inner = container_of(cursor, struct jconf_udpobj_inner, ele_of_inner_udpobj);
         list_del_init(cursor);
         zfree(inner);
     }

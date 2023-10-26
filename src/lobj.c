@@ -545,6 +545,9 @@ void lobj_fx_cover(lobj_pt lop, const struct lobj_fx_sym *sym)
     if (!lop->fx.recvdataproc && sym->recvdataproc_sym) {
         lop->fx.recvdataproc = (recvdata_pfn)ifos_dlsym(lop->handle, sym->recvdataproc_sym);
     }
+    if (!lop->fx.vrecvdataproc && sym->vrecvdataproc_sym) {
+        lop->fx.vrecvdataproc = (vrecvdata_pfn)ifos_dlsym(lop->handle, sym->vrecvdataproc_sym);
+    }
     if (!lop->fx.rawinvokeproc && sym->rawinvokeproc_sym) {
         lop->fx.rawinvokeproc = (rawinvoke_pfn)ifos_dlsym(lop->handle, sym->rawinvokeproc_sym);
     }
@@ -624,17 +627,32 @@ int lobj_fx_vread(lobj_pt lop, int elements, void **data, size_t *n)
     return lop->fx.vreadproc(lop, elements, data, n);
 }
 
-void lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n)
+int lobj_fx_on_recvdata(lobj_pt lop, const void *data, size_t n)
 {
     if (!lop || !data || !n) {
-        return;
+        return posix__makeerror(EINVAL);
     }
 
     if (!lop->fx.recvdataproc) {
-        return;
+        return posix__makeerror(ENOENT);
     }
 
     lop->fx.recvdataproc(lop, data, n);
+    return 0;
+}
+
+int lobj_fx_on_vrecvdata(lobj_pt lop, int elements, const void **vdata, const size_t *vsize)
+{
+    if (!lop || !vdata || !vsize || elements < 0) {
+        return posix__makeerror(EINVAL);
+    }
+
+    if (!lop->fx.recvdataproc) {
+        return posix__makeerror(ENOENT);
+    }
+
+    lop->fx.vrecvdataproc(lop, elements, vdata, vsize);
+    return 0;
 }
 
 int lobj_fx_rawinvoke(lobj_pt lop, const void *datain, size_t nin, void *dataout, size_t *nout)

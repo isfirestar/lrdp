@@ -18,6 +18,7 @@ struct jconf_head
     JCONF_DECLARE_NORMAL_STRING(writeproc);
     JCONF_DECLARE_NORMAL_STRING(vwriteproc);
     JCONF_DECLARE_NORMAL_STRING(recvdataproc);
+    JCONF_DECLARE_NORMAL_STRING(vrecvdataproc);
     JCONF_DECLARE_NORMAL_STRING(rawinvokeproc);
     unsigned int ctxsize;
 };
@@ -213,3 +214,18 @@ typedef struct jconf_aeobj jconf_aeobj_t, *jconf_aeobj_pt;
 extern jconf_iterator_pt jconf_aeobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_aeobj_get(jconf_iterator_pt iterator, jconf_aeobj_pt *jaeobj);
 extern void jconf_aeobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        UDPOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_udpobj
+{
+    struct jconf_head head;
+    char local[128];
+    int setsize;
+};
+typedef struct jconf_udpobj jconf_udpobj_t, *jconf_udpobj_pt;
+
+extern jconf_iterator_pt jconf_udpobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_udpobj_get(jconf_iterator_pt iterator, jconf_udpobj_pt *judpobj);
+extern void jconf_udpobj_free();

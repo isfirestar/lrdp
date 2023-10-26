@@ -149,7 +149,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
             robj->c = redisAsyncConnect(robj->host.ip, robj->host.port);
         } else {
             robj->domain[sizeof(robj->domain) - 1] = '\0'; // ensure null-terminated
-+           strncpy(robj->domain, jredis_server_cfg->host, sizeof(robj->domain) - 1);
+            strncpy(robj->domain, jredis_server_cfg->host, sizeof(robj->domain) - 1);
             robj->c = redisAsyncConnectUnix(robj->domain);
         }
 
@@ -236,6 +236,7 @@ static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vda
 {
     struct redisobj_na *robjna;
     redisReply *reply;
+    int replyType;
 
     if (!lop || !vdata || !vsize) {
         return -1;
@@ -321,7 +322,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
             robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
         } else {
             robjna->domain[sizeof(robjna->domain) - 1] = '\0'; // ensure null-terminated
-+           strncpy(robjna->domain, jredis_server_cfg->host, sizeof(robjna->domain) - 1);
+            strncpy(robjna->domain, jredis_server_cfg->host, sizeof(robjna->domain) - 1);
             robjna->c = redisConnectUnix(robjna->domain);
         }
         if (!robjna->c) {
