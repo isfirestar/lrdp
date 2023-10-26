@@ -647,7 +647,7 @@ int lobj_fx_on_vrecvdata(lobj_pt lop, int elements, const void **vdata, const si
         return posix__makeerror(EINVAL);
     }
 
-    if (!lop->fx.recvdataproc) {
+    if (!lop->fx.vrecvdataproc) {
         return posix__makeerror(ENOENT);
     }
 

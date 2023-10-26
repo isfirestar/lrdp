@@ -1,0 +1,28 @@
+{
+    "mainloop" : {
+        "module" : "/mnt/d/git/my/lrdp/gmake/libudpcli.so",
+        "contextsize" : 128
+    },
+
+    "timers" : {
+        "sender" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libudpcli.so",
+            "interval" : 500,
+            "timerproc" : "udp_senddata",
+            "contextsize" : 16
+        }
+    },
+
+    "udp" : {
+        "endpoint" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libudpcli.so",
+            "vrecvdataproc" : "on_udp_recvdata"
+        },
+
+        "domain" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libudpcli.so",
+            "vrecvdataproc" : "on_udp_domain_recvdata",
+            "bindon" : "ipc:"
+        }
+    }
+}

@@ -28,19 +28,6 @@ static void __lrdp_load_lwp()
     jconf_lwp_free();
 }
 
-static void __lrdp_load_network()
-{
-    jconf_net_pt jnetcfg = NULL;
-    jconf_iterator_pt iterator;
-    unsigned int count;
-
-    iterator = jconf_net_get_iterator(&count);
-    while (NULL != (iterator = jconf_net_get(iterator, &jnetcfg))) {
-        netobj_create(jnetcfg);
-    }
-    jconf_net_free();
-}
-
 static void __lrdp_load_tty(aeEventLoop *el)
 {
     jconf_tty_pt jttycfg = NULL;
@@ -197,9 +184,6 @@ int main(int argc, char *argv[])
 
     /* load and create multi-thread component */
     __lrdp_load_lwp();
-
-    /* load and create networking component */
-    __lrdp_load_network();
 
     /* load and create tty component */
     __lrdp_load_tty(el);

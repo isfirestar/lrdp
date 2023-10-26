@@ -1,0 +1,15 @@
+{
+    "udp" : {
+        "endpoint" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libudpsrv.so",
+            "vrecvdataproc" : "on_udp_recvdata",
+            "bindon" : "0.0.0.0:7773"
+        },
+
+        "domain" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libudpsrv.so",
+            "vrecvdataproc" : "on_udp_domain_recvdata",
+            "bindon" : "ipc:/mnt/d/git/my/lrdp/udpsrv.domain.sock"
+        }
+    }
+}

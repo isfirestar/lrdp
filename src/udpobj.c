@@ -19,8 +19,6 @@ static void __udpobj_close(lobj_pt lop, void *ctx, size_t ctxsize)
         udp_destroy(obj->link);
         obj->link = INVALID_HUDPLINK;
     }
-
-    lobj_ldestroy(lop);
 }
 
 static void __udpobj_on_recvdata(HUDPLINK link, const udp_data_pt udpdata)
@@ -35,7 +33,7 @@ static void __udpobj_on_recvdata(HUDPLINK link, const udp_data_pt udpdata)
         return;
     }
 
-    if (udpdata->e.Packet.Domain) {
+    if (0 == udpdata->e.Packet.RemotePort && udpdata->e.Packet.Domain) {
         vdata[0] = udpdata->e.Packet.Domain;
         vsize[0] = strlen(udpdata->e.Packet.Domain);
         vdata[1] = udpdata->e.Packet.Data;
@@ -154,7 +152,7 @@ lobj_pt udpobj_create(const jconf_udpobj_pt judp)
     status = netobj_parse_endpoint(judp->local, &obj->local);
     if (!NSP_SUCCESS(status)) {
         if (0 == strncasecmp("IPC:", judp->local, 4)) {
-            strncpy(obj->domain, judp->local + 4, sizeof(obj->domain) - 1);
+            strncpy(obj->domain, judp->local, sizeof(obj->domain) - 1);
             obj->link = udp_create(&__udpobj_common_callback, obj->domain, 0, UDP_FLAG_NONE);
         }
     } else {
