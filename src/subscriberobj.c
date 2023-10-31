@@ -7,6 +7,7 @@
 #include "zmalloc.h"
 #include "ifos.h"
 #include "print.h"
+#include "print.h"
 
 #include <unistd.h>
 
@@ -112,6 +113,45 @@ static void __do_subscriberobj(lobj_pt lop)
     zfree(vsize);
 }
 
+static void __do_unsubscriberobj(lobj_pt lop)
+{
+    const char **vdata;
+    size_t *vsize;
+    struct subscriberobj *subobj;
+    unsigned int i;
+    unsigned int vcount;
+
+    subobj = lobj_body(struct subscriberobj *, lop);
+    vcount = 2 + 1 + subobj->channels;
+    // (callback + privateData) + PUBLISH + channels
+    vdata = (const char **)ztrycalloc(sizeof(char *) * vcount);
+    if (!vdata) {
+        lrdp_generic_error("Insufficient memory for subscriber object.");
+        return;
+    }
+    vsize = (size_t *)ztrycalloc(sizeof(size_t) * vcount);
+    if (!vsize) {
+        lrdp_generic_error("Insufficient memory for subscriber object.");
+        zfree(vdata);
+        return;
+    }
+
+    vdata[0] = NULL;
+    vsize[0] = 0;
+    vdata[1] = (void *)lobj_get_seq(lop);
+    vsize[1] = sizeof(void *);
+    vdata[2] = "PUNSUBSCRIBE";
+    vsize[2] = strlen("PUNSUBSCRIBE");
+    for (i = 0; i < subobj->channels; i++) {
+        vdata[i + 3] = subobj->channel[i].pattern;
+        vsize[i + 3] = strlen(subobj->channel[i].pattern);
+    }
+
+    lobj_fx_vwrite(subobj->redislop,  vcount, (const void **)vdata, vsize);
+    zfree(vdata);
+    zfree(vsize);
+}
+
 static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize)
 {
     struct subscriberobj *subobj;
@@ -121,10 +161,19 @@ static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize
     }
 
     subobj = lobj_body(struct subscriberobj *, lop);
+    if (!subobj) {
+        return;
+    }
+
+    // unsubscribe all channels
+    __do_unsubscriberobj(lop);
+
+    // release memory
     if (subobj->channel) {
         zfree(subobj->channel);
     }
 
+    // detach the reference of redis object
     if (subobj->redislop) {
         lobj_derefer(subobj->redislop);
     }
@@ -133,7 +182,7 @@ static void __subscriberobj_free(struct lobj *lop, void *context, size_t ctxsize
 void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
 {
     lobj_pt redislop, sublop;
-    struct lobj_fx_sym sym;
+    struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
     struct subscriberobj *subobj;
     unsigned int i;
@@ -183,6 +232,7 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         lrdp_generic_error("Insufficient memory for subscriber channel.");
         lobj_ldestroy(sublop);
         lobj_derefer(redislop);
+        lrdp_generic_error("insufficient memory for subscriber channels.");
         return;
     }
     i = 0;
@@ -191,7 +241,8 @@ void subscriberobj_create(const jconf_subscriber_pt jsubcfg)
         if (i >= subobj->channels) {
             break;
         }
-        strncpy(subobj->channel[i].pattern, jsubchannelcfg->pattern, sizeof(subobj->channel[i].pattern));
+        subobj->channel[i].pattern[sizeof(subobj->channel[i].pattern) - 1] = '\0'; // ensure the last byte is '\0' for strncpy
+        strncpy(subobj->channel[i].pattern, jsubchannelcfg->pattern, sizeof(subobj->channel[i].pattern) - 1);
         ++i;
     }
 
