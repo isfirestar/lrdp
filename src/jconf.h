@@ -38,6 +38,20 @@ extern nsp_status_t jconf_initial_load(const char *jsonfile);
 extern jconf_entry_pt jconf_entry_get(void);
 
 /* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        AEOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_aeobj
+{
+    struct jconf_head head;
+    int setsize;
+};
+typedef struct jconf_aeobj jconf_aeobj_t, *jconf_aeobj_pt;
+
+extern jconf_iterator_pt jconf_aeobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_aeobj_get(jconf_iterator_pt iterator, jconf_aeobj_pt *jaeobj);
+extern void jconf_aeobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        LWP IMPLEMENTATIONs        ------------------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
 struct jconf_lwp
@@ -45,6 +59,7 @@ struct jconf_lwp
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(module);
     JCONF_DECLARE_NORMAL_STRING(execproc);
+    JCONF_DECLARE_NORMAL_STRING(aeo);
     unsigned int stacksize;
     unsigned int priority;
     unsigned int affinity;
@@ -54,28 +69,6 @@ typedef struct jconf_lwp jconf_lwp_t, *jconf_lwp_pt;
 extern jconf_iterator_pt jconf_lwp_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_lwp_get(jconf_iterator_pt iterator, jconf_lwp_pt *jlwp);
 extern void jconf_lwp_free();
-
-/* -----------------------------------------------------------------------------------------------------------------------------
- * ------------------------------------------        NET IMPLEMENTATIONs        ------------------------------------------------
- * ----------------------------------------------------------------------------------------------------------------------------- */
-#define JCFG_PROTO_ERR  (0)
-#define JCFG_PROTO_TCP  (6)
-#define JCFG_PROTO_UDP  (17)
-struct jconf_net
-{
-    struct jconf_head head;
-    JCONF_DECLARE_STRING(listen, 24);
-    JCONF_DECLARE_STRING(remote, 24);
-    JCONF_DECLARE_STRING(local, 24);
-    JCONF_DECLARE_NORMAL_STRING(acceptproc);
-    JCONF_DECLARE_NORMAL_STRING(connectproc);
-    unsigned int protocol;
-};
-typedef struct jconf_net jconf_net_t, *jconf_net_pt;
-
-extern jconf_iterator_pt jconf_net_get_iterator(unsigned int *count);
-extern jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets);
-extern void jconf_net_free();
 
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        TTY IMPLEMENTATIONs        ------------------------------------------------
@@ -105,6 +98,7 @@ struct jconf_timer
 {
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(timerproc);
+    JCONF_DECLARE_NORMAL_STRING(aeo);
     unsigned int interval;
 };
 typedef struct jconf_timer jconf_timer_t, *jconf_timer_pt;
@@ -120,6 +114,7 @@ struct jconf_redis_server
 {
     struct jconf_head head;
     JCONF_DECLARE_NORMAL_STRING(host);
+    JCONF_DECLARE_NORMAL_STRING(aeo);
     int na;
 };
 typedef struct jconf_redis_server jconf_redis_server_t, *jconf_redis_server_pt;
@@ -166,24 +161,6 @@ extern jconf_iterator_pt jconf_rawobj_get(jconf_iterator_pt iterator, jconf_rawo
 extern void jconf_rawobj_free();
 
 /* -----------------------------------------------------------------------------------------------------------------------------
- * ------------------------------------------        EPOLLOBJ IMPLEMENTATIONs        -----------------------------------------
- * ----------------------------------------------------------------------------------------------------------------------------- */
-struct jconf_epollobj
-{
-    struct jconf_head head;
-    unsigned int poolthreads;
-    unsigned int timeout;
-    JCONF_DECLARE_NORMAL_STRING(errorproc);
-    JCONF_DECLARE_NORMAL_STRING(rdhupproc);
-    JCONF_DECLARE_NORMAL_STRING(timeoutproc);
-};
-typedef struct jconf_epollobj jconf_epollobj_t, *jconf_epollobj_pt;
-
-extern jconf_iterator_pt jconf_epollobj_get_iterator(unsigned int *count);
-extern jconf_iterator_pt jconf_epollobj_get(jconf_iterator_pt iterator, jconf_epollobj_pt *jepollobj);
-extern void jconf_epollobj_free();
-
-/* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        MESGOBJS IMPLEMENTATIONs        -----------------------------------------
  * ----------------------------------------------------------------------------------------------------------------------------- */
 struct jconf_mesgqobj
@@ -200,20 +177,6 @@ typedef struct jconf_mesgqobj jconf_mesgqobj_t, *jconf_mesgqobj_pt;
 extern jconf_iterator_pt jconf_mesgqobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_mesgqobj_get(jconf_iterator_pt iterator, jconf_mesgqobj_pt *jmesgqobj);
 extern void jconf_mesgqobj_free();
-
-/* -----------------------------------------------------------------------------------------------------------------------------
- * ------------------------------------------        AEOBJ IMPLEMENTATIONs        -----------------------------------------
- * ----------------------------------------------------------------------------------------------------------------------------- */
-struct jconf_aeobj
-{
-    struct jconf_head head;
-    int setsize;
-};
-typedef struct jconf_aeobj jconf_aeobj_t, *jconf_aeobj_pt;
-
-extern jconf_iterator_pt jconf_aeobj_get_iterator(unsigned int *count);
-extern jconf_iterator_pt jconf_aeobj_get(jconf_iterator_pt iterator, jconf_aeobj_pt *jaeobj);
-extern void jconf_aeobj_free();
 
 /* -----------------------------------------------------------------------------------------------------------------------------
  * ------------------------------------------        UDPOBJ IMPLEMENTATIONs        -----------------------------------------

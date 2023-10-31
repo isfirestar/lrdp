@@ -4,25 +4,19 @@
 #include "compiler.h"
 
 /* avl search tree, by neo-anderson 2012-05-05 copyright(C) shunwang Co,.Ltd*/
-struct avltree_node_t {
-    struct avltree_node_t *lchild, *rchild; /* 分别指向左右子树 */
-    int height; /* 树的高度 */
+struct avlnode {
+    struct avlnode *lchild, *rchild;
+    int height;
 } __POSIX_TYPE_ALIGNED__;
 
-/**
- *	结构类型重声明
- */
-typedef struct avltree_node_t TREENODE_T, *PTREENODE, *TREEROOT;
+typedef struct avlnode avltree_node_t, *avltree_node_pt;
 
 /**
- *	节点数据对比例程
+ *  the compare function for comparing two nodes.
  *
- *	left 用于对比的左节点， 数据类型强制转化为struct avltree_node_t *后可用
- *	fight 用于对比的右节点， 数据类型强制转化为struct avltree_node_t *后可用
- *
- *	左节点大于右节点， 返回指定 1
- *	左节点小于右节点， 返回指定 -1
- *	左右节点相等，     返回指定 0
+ *  left > right -> 1
+ *  left < right -> -1
+ *  left = right -> 0
  */
 typedef int( *avltree_compare_fp)(const void *left, const void *right);
 
@@ -32,56 +26,61 @@ typedef int( *avltree_compare_fp)(const void *left, const void *right);
 #define avl_type_compare(type, leaf, field, left, right) \
     avl_simple_compare(container_of(left, type, leaf), container_of(right, type, leaf), field)
 
-/**
- *  向根为tree的AVL树插入数据。
- *
- *  tree指向插入数据前AVL树的根。
- *  node指向包含待插入数据的avltree_node_t节点。
- *  compare指向节点之间的比较函数，由用户定义。
- *
- *  返回插入数据后AVL树的根。
- *
- *	数据结构过程使用参数传入指针直接钩链， 而没有进行深拷贝操作， 需要主调函数保证节点指针在调用 avlremove 之前的有效性
- */
-PORTABLEAPI(struct avltree_node_t *) avlinsert(struct avltree_node_t *tree, struct avltree_node_t *node,
-        int( *compare)(const void *, const void *));
-/**
- *  从根为tree的AVL树删除数据。
- *
- *  tree指向删除数据前AVL树的根。
- *  node指向包含待匹配数据的avltree_node_t节点。
- *  rmnode为一个二次指针，删除成功时*rmnode存放的是被删除节点指针，失败则为NULL。
- *  compare指向节点之间的比较函数，由用户定义。
- *
- *  返回删除数据后AVL树的根。
- */
-PORTABLEAPI(struct avltree_node_t *) avlremove(struct avltree_node_t *tree, struct avltree_node_t *node,
-        struct avltree_node_t **rmnode,
-        int( *compare)(const void *, const void *));
-/**
- *  从根为tree的AVL树中搜索数据。
- *
- *  tree指向AVL树的根。
- *  node指向包含待匹配数据的avltree_node_t节点。
- *  compare指向节点之间的比较函数，由用户定义。
- *
- *  返回匹配数据节点，或者NULL。
- */
-PORTABLEAPI(struct avltree_node_t *) avlsearch(struct avltree_node_t *tree, struct avltree_node_t *node,
-        int( *compare)(const void *, const void *));
-/**
- *  从根为tree的AVL树中搜索最小数据节点。
- *
- *  返回最小数据节点，或者NULL（空树）。
- */
-PORTABLEAPI(struct avltree_node_t *) avlgetmin(struct avltree_node_t *tree);
 
 /**
- *  从根为tree的AVL树中搜索最大数据节点。
+ *  insert a node into an AVL tree.
  *
- *  返回最大数据节点，或者NULL（空树）。
+ *  @param tree The root node of the AVL tree.
+ *  @param node The node to insert.
+ *  @param compare The comparison function to use for comparing nodes.
+ *  @return The root node of the AVL tree after the node has been inserted.
  */
-PORTABLEAPI(struct avltree_node_t *) avlgetmax(struct avltree_node_t *tree);
+PORTABLEAPI(avltree_node_pt) avlinsert(avltree_node_pt tree, avltree_node_pt node, const avltree_compare_fp compare);
 
+/**
+ *  remove a node from an AVL tree.
+ *
+ *  @param tree The root node of the AVL tree.
+ *  @param node The node to remove.
+ *  @param rmnode The node to remove from the AVL tree.
+ *  @param compare The comparison function to use for comparing nodes.
+ *  @return The root node of the AVL tree after the node has been removed.
+ *
+ *  notes that @rmnode can be NULL, if it is NULL, funcion ignore the removed itme.
+ */
+PORTABLEAPI(avltree_node_pt) avlremove(avltree_node_pt tree, avltree_node_pt node, avltree_node_pt *rmnode, const avltree_compare_fp compare);
+
+/**
+ * search a node in an AVL tree.
+ *
+ * @param tree The root node of the AVL tree.
+ * @param node The node to search for.
+ * @param compare The comparison function to use for comparing nodes.
+ */
+PORTABLEAPI(avltree_node_pt) avlsearch(avltree_node_pt tree, avltree_node_pt node, const avltree_compare_fp compare);
+
+/**
+ * get the minimum/maximum node in an AVL tree.
+ */
+PORTABLEAPI(avltree_node_pt) avlgetmin(avltree_node_pt tree);
+PORTABLEAPI(avltree_node_pt) avlgetmax(avltree_node_pt tree);
+
+/**
+ * Finds the lower/upper bound node in an AVL tree for a given node using the provided comparison function.
+ *
+ * @param tree The root node of the AVL tree.
+ * @param node The node to find the upper bound for.
+ * @param compare The comparison function to use for comparing nodes.
+ * @return The lower/upper bound node in the AVL tree for the given node, or NULL if no such node exists.
+ *
+ *  @avllowerbound function return the first node that is not less than the given node.
+ *  @avlupperbound function return the first node that is greater than the given node.
+ *  for example:
+ *  set = { 1, 4, 7, 10, 13, 16, 19, 22, 25 }
+ *  avllowerbound(set, 7) == 7
+ *  avlupperbound(set, 7) == 10
+ */
+PORTABLEAPI(avltree_node_pt) avllowerbound(avltree_node_pt tree, avltree_node_pt node, const avltree_compare_fp compare);
+PORTABLEAPI(avltree_node_pt) avlupperbound(avltree_node_pt tree, avltree_node_pt node, const avltree_compare_fp compare);
 
 #endif /*_AVLTREE_HEADER_ANDERSON_20120216*/

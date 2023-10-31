@@ -1,8 +1,7 @@
 #include "redisobj.h"
-
+#include "aeobj.h"
 #include "hiredis.h"
 #include "async.h"
-#include "ae.h"
 #include "print.h"
 
 #include "netobj.h"
@@ -12,7 +11,7 @@ struct redisobj
     redisAsyncContext *c;
     struct endpoint host;
     char domain[128];
-    aeEventLoop *el;
+    lobj_pt lop_aeo;
 };
 
 struct redisobj_na
@@ -30,6 +29,12 @@ static void __redisobj_free(lobj_pt lop, void *context, size_t ctxsize)
     robj = lobj_body(struct redisobj *, lop);
     if (robj->c) {
         redisAsyncFree(robj->c);
+        robj->c = NULL;
+    }
+
+    if (robj->lop_aeo) {
+        lobj_derefer(robj->lop_aeo);
+        robj->lop_aeo = NULL;
     }
 }
 
@@ -113,6 +118,7 @@ static void __redisobj_on_disconnect(const redisAsyncContext *c, int status)
 
 void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop *el)
 {
+    aeEventLoop *self_el;
     struct lobj_fx fx = {
         .freeproc = &__redisobj_free,
         .writeproc = &__redisobj_write,
@@ -143,7 +149,15 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
     lobj_fx_cover(lop, &sym);
 
     do {
-        robj->el = el;
+        // use which ae
+        robj->lop_aeo = lobj_refer(jredis_server_cfg->aeo);
+        if (robj->lop_aeo) {
+            self_el = aeobj_getel(robj->lop_aeo);
+        } else {
+            self_el = el;
+        }
+
+        // get target host
         status = netobj_parse_endpoint(jredis_server_cfg->host, &robj->host);
         if (NSP_SUCCESS(status)) {
             robj->c = redisAsyncConnect(robj->host.ip, robj->host.port);
@@ -160,7 +174,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
 
         redisAsyncSetConnectCallback(robj->c, &__redisobj_on_connected);
         redisAsyncSetDisconnectCallback(robj->c, &__redisobj_on_disconnect);
-        redisAeAttach(el, robj->c);
+        redisAeAttach(self_el, robj->c);
 
         if (robj->c->err) {
             if (REDIS_ERR_IO == robj->c->err) {

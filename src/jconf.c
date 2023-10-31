@@ -83,14 +83,13 @@ jconf_entry_pt jconf_entry_get(void)
     return &jentry;
 }
 
+static void __jconf_aeobj_load(cJSON *entry);
 static void __jconf_lwp_load(cJSON *entry);
-static void __jconf_net_load(cJSON *entry);
 static void __jconf_tty_load(cJSON *entry);
 static void __jconf_timer_load(cJSON *entry);
 static void __jconf_redis_server_load(cJSON *entry);
 static void __jconf_subscriber_load(cJSON *entry);
 static void __jconf_rawobj_load(cJSON *entry);
-static void __jconf_epollobj_load(cJSON *entry);
 static void __jconf_mesgqobj_load(cJSON *entry);
 static void __jconf_udpobj_load(cJSON *entry);
 
@@ -143,13 +142,13 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
         while (jcursor) {
             if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "mainloop")) {
                 __jconf_entry_load(jcursor);
-            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "lwps")) {
+            } else if (jcursor->type == cJSON_Object && (0 == strcasecmp(jcursor->string, "lwps") || 0 == strcasecmp(jcursor->string, "threads"))) {
                 __jconf_lwp_load(jcursor);
-            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "nets")) {
-                __jconf_net_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && (0 == strcasecmp(jcursor->string, "aeo") || 0 == strcasecmp(jcursor->string, "aeobj"))) {
+                __jconf_aeobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "ttys")) {
                 __jconf_tty_load(jcursor);
-            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "timers")) {
+            } else if (jcursor->type == cJSON_Object && (0 == strcasecmp(jcursor->string, "timers") || 0 == strcasecmp(jcursor->string, "timer"))) {
                 __jconf_timer_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "redis-server")) {
                 __jconf_redis_server_load(jcursor);
@@ -157,8 +156,6 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_subscriber_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "imports")) {
                 __jconf_rawobj_load(jcursor);
-            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "epoll")) {
-                __jconf_epollobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "mesgq")) {
                 __jconf_mesgqobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "udp")) {
@@ -234,6 +231,8 @@ static void __jconf_lwp_load(cJSON *entry)
             if (jnext->type == cJSON_String) {
                 if (0 == strcasecmp(jnext->string, "execproc")) {
                     strncpy(lwp->body.execproc, jnext->valuestring, sizeof(lwp->body.execproc) - 1);
+                } else if (0 == strcasecmp(jnext->string, "aeobj") || 0 == strcasecmp(jnext->string, "aeo")) {
+                    strncpy(lwp->body.aeo, jnext->valuestring, sizeof(lwp->body.aeo) - 1);
                 }
             } else if (jnext->type == cJSON_Number) {
                 if (0 == strcasecmp(jnext->string, "priority")) {
@@ -300,121 +299,6 @@ void jconf_lwp_free()
 
     list_for_each_safe(cursor, next, &g_jlwps_head) {
         inner = container_of(cursor, struct jconf_lwp_inner, ele_of_inner);
-        list_del(cursor);
-        zfree(inner);
-    }
-}
-
-/* -----------------------------------------------------------------------------------------------------------------------------
- * ------------------------------------------        NET IMPLEMENTATIONs        ------------------------------------------------
- * ----------------------------------------------------------------------------------------------------------------------------- */
-struct jconf_net_inner
-{
-    struct jconf_net body;
-    struct list_head ele_of_inner;
-};
-static struct list_head g_jnets_head = { &g_jnets_head, &g_jnets_head };
-static unsigned int jnets_count = 0;
-
-static void __jconf_net_load(cJSON *entry)
-{
-    cJSON *jcursor, *jnext;
-    struct jconf_net_inner *net;
-
-    jcursor = entry->child;
-
-    while (jcursor) {
-        net = ztrycalloc(sizeof(*net));
-        if (!net) {
-            break;
-        }
-
-        jnext = __jconf_load_head(jcursor, &net->body.head);
-        if (!jnext) {
-            zfree(net);
-            break;
-        }
-
-        do {
-            if (jnext->type == cJSON_String) {
-                if (0 == strcasecmp(jnext->string, "acceptproc")) {
-                    strncpy(net->body.acceptproc, jnext->valuestring, sizeof(net->body.acceptproc) - 1);
-                } else if (0 == strcasecmp(jnext->string, "connectproc")) {
-                    strncpy(net->body.connectproc, jnext->valuestring, sizeof(net->body.connectproc) - 1);
-                } else if (0 == strcasecmp(jnext->string, "listen")) {
-                    strncpy(net->body.listen, jnext->valuestring, sizeof(net->body.listen) - 1);
-                } else if (0 == strcasecmp(jnext->string, "remote")) {
-                    strncpy(net->body.remote, jnext->valuestring, sizeof(net->body.remote) - 1);
-                } else if (0 == strcasecmp(jnext->string, "local")) {
-                    strncpy(net->body.local, jnext->valuestring, sizeof(net->body.local) - 1);
-                } else if (0 == strcasecmp(jnext->string, "protocol")) {
-                    if (0 == strcasecmp(jnext->valuestring, "tcp")) {
-                        net->body.protocol = JCFG_PROTO_TCP;
-                    } else if (0 == strcasecmp(jnext->valuestring, "udp")) {
-                        net->body.protocol = JCFG_PROTO_UDP;
-                    } else {
-                        net->body.protocol = JCFG_PROTO_ERR;
-                    }
-                }
-            }
-            jnext = jnext->next;
-        } while (jnext);
-
-        list_add_tail(&net->ele_of_inner, &g_jnets_head);
-        jnets_count++;
-        jcursor = jcursor->next;
-    }
-}
-
-jconf_iterator_pt jconf_net_get_iterator(unsigned int *count)
-{
-    jconf_iterator_pt iterator;
-
-    if (count) {
-        *count = jnets_count;
-    }
-
-    if (0 == count) {
-        return NULL;
-    }
-
-    iterator = ztrymalloc(sizeof(*iterator));
-    if (!iterator) {
-        return NULL;
-    }
-
-    iterator->cursor = g_jnets_head.next;
-    return iterator;
-}
-
-jconf_iterator_pt jconf_net_get(jconf_iterator_pt iterator, jconf_net_pt *jnets)
-{
-    struct list_head *cursor;
-    struct jconf_net_inner *inner;
-
-    if (!iterator || !jnets) {
-        return NULL;
-    }
-
-    cursor = iterator->cursor;
-    if (cursor == &g_jnets_head) {
-        zfree(iterator);
-        return NULL;
-    }
-
-    inner = container_of(cursor, struct jconf_net_inner, ele_of_inner);
-    *jnets  = &inner->body;
-    iterator->cursor = cursor->next;
-    return iterator;
-}
-
-void jconf_net_free()
-{
-    struct list_head *cursor, *next;
-    struct jconf_net_inner *inner;
-
-    list_for_each_safe(cursor, next, &g_jnets_head) {
-        inner = container_of(cursor, struct jconf_net_inner, ele_of_inner);
         list_del(cursor);
         zfree(inner);
     }
@@ -565,6 +449,8 @@ static void __jconf_timer_load(cJSON *entry)
             if (jnext->type == cJSON_String) {
                 if (0 == strcasecmp(jnext->string, "timerproc")) {
                     strncpy(timer->body.timerproc, jnext->valuestring, sizeof(timer->body.timerproc) - 1);
+                } else if (0 == strcasecmp(jnext->string, "aeo")) {
+                    strncpy(timer->body.aeo, jnext->valuestring, sizeof(timer->body.aeo) - 1);
                 }
             } else if (jnext->type == cJSON_Number) {
                 if (0 == strcasecmp(jnext->string, "interval")) {
@@ -669,6 +555,8 @@ static void __jconf_redis_server_load(cJSON *entry)
             if (jnext->type == cJSON_String) {
                 if (0 == strcasecmp(jnext->string, "host")) {
                     strncpy(redis_server->body.host, jnext->valuestring, sizeof(redis_server->body.host) - 1);
+                } else if (0 == strcasecmp(jnext->string, "aeo")) {
+                    strncpy(redis_server->body.aeo, jnext->valuestring, sizeof(redis_server->body.aeo) - 1);
                 }
             }
 
@@ -956,109 +844,6 @@ void jconf_rawobj_free()
 
     list_for_each_safe(cursor, next, &g_jrawobj_head) {
         inner = container_of(cursor, struct jconf_rawobj_inner, ele_of_inner_rawobj);
-        list_del_init(cursor);
-        zfree(inner);
-    }
-}
-
-/* -----------------------------------------------------------------------------------------------------------------------------
- * ------------------------------------------        EPOLLOBJ IMPLEMENTATIONs        ------------------------------------------------
- * ----------------------------------------------------------------------------------------------------------------------------- */
-struct jconf_epollobj_inner
-{
-    struct jconf_epollobj body;
-    struct list_head ele_of_inner_epollobj;
-};
-
-static struct list_head g_jepollobj_head = { &g_jepollobj_head, &g_jepollobj_head };
-static unsigned int jepollobj_count = 0;
-
-static void __jconf_epollobj_load(cJSON *entry)
-{
-    cJSON *jcursor, *jnext;
-    struct jconf_epollobj_inner *epollobj;
-
-    jcursor = entry->child;
-
-    while (jcursor) {
-            epollobj = ztrycalloc(sizeof(*epollobj));
-            if (!epollobj) {
-                break;
-            }
-
-            jnext = __jconf_load_head(jcursor, &epollobj->body.head);
-            while (jnext) {
-                if (jnext->type == cJSON_String) {
-                    if (0 == strcasecmp(jnext->string, "poolthreads") && jnext->type == cJSON_Number) {
-                        epollobj->body.poolthreads = jnext->valueint;
-                    } else if (0 == strcasecmp(jnext->string, "timeout") && jnext->type == cJSON_Number) {
-                        epollobj->body.timeout = jnext->valueint;
-                    } else if (0 == strcasecmp(jnext->string, "timeoutproc") && jnext->type == cJSON_String) {
-                        strncpy(epollobj->body.timeoutproc, jnext->valuestring, sizeof(epollobj->body.timeoutproc) - 1);
-                    } else if (0 == strcasecmp(jnext->string, "rdhupproc") && jnext->type == cJSON_String) {
-                        strncpy(epollobj->body.rdhupproc, jnext->valuestring, sizeof(epollobj->body.rdhupproc) - 1);
-                    } else if (0 == strcasecmp(jnext->string, "errorproc") && jnext->type == cJSON_String) {
-                        strncpy(epollobj->body.errorproc, jnext->valuestring, sizeof(epollobj->body.errorproc) - 1);
-                    }
-                }
-                jnext = jnext->next;
-            }
-
-            list_add_tail(&epollobj->ele_of_inner_epollobj, &g_jepollobj_head);
-            jepollobj_count++;
-        jcursor = jcursor->next;
-    }
-}
-
-jconf_iterator_pt jconf_epollobj_get_iterator(unsigned int *count)
-{
-    jconf_iterator_pt iterator;
-
-    if (count) {
-        *count = jepollobj_count;
-    }
-
-    if (0 == count) {
-        return NULL;
-    }
-
-    iterator = ztrymalloc(sizeof(*iterator));
-    if (!iterator) {
-        return NULL;
-    }
-
-    iterator->cursor = g_jepollobj_head.next;
-    return iterator;
-}
-
-jconf_iterator_pt jconf_epollobj_get(jconf_iterator_pt iterator, jconf_epollobj_pt *jepollobjs)
-{
-    struct list_head *cursor;
-    struct jconf_epollobj_inner *inner;
-
-    if (!iterator || !jepollobjs) {
-        return NULL;
-    }
-
-    cursor = iterator->cursor;
-    if (cursor == &g_jepollobj_head) {
-        zfree(iterator);
-        return NULL;
-    }
-
-    inner = container_of(cursor, struct jconf_epollobj_inner, ele_of_inner_epollobj);
-    *jepollobjs  = &inner->body;
-    iterator->cursor = cursor->next;
-    return iterator;
-}
-
-void jconf_epollobj_free()
-{
-    struct list_head *cursor, *next;
-    struct jconf_epollobj_inner *inner;
-
-    list_for_each_safe(cursor, next, &g_jepollobj_head) {
-        inner = container_of(cursor, struct jconf_epollobj_inner, ele_of_inner_epollobj);
         list_del_init(cursor);
         zfree(inner);
     }

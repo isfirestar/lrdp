@@ -32,7 +32,7 @@ static void _mutex_uninit(MUTEX_T *mutex)
 
 typedef struct _object_t
 {
-    struct avltree_node_t clash;    /* the hash conflict item container */
+    avltree_node_t clash;    /* the hash conflict item container */
     objhld_t hld;
     int status;
     int refcnt;
@@ -44,7 +44,7 @@ typedef struct _object_t
 
 struct _object_manager
 {
-    struct avltree_node_t *roottab[OBJ_HASHTABLE_SIZE];
+    avltree_node_t *roottab[OBJ_HASHTABLE_SIZE];
     objhld_t atoid;
     MUTEX_T mutex;
 };
@@ -79,7 +79,7 @@ static int _avl_compare_routine(const void *left, const void *right)
 static nsp_status_t _objtabinst(object_t *obj)
 {
     object_t find;
-    struct avltree_node_t **root, *target;
+    avltree_node_t **root, *target;
     nsp_status_t status;
 
     root = NULL;
@@ -124,7 +124,7 @@ static nsp_status_t _objtabinst(object_t *obj)
 static nsp_status_t _objtabrmve(objhld_t hld, object_t **removed)
 {
 	object_t node;
-    struct avltree_node_t **root, *rmnode;
+    avltree_node_t **root, *rmnode;
 
     root = _hld2root(hld);
     if (unlikely(!root)) {
@@ -145,7 +145,7 @@ static nsp_status_t _objtabrmve(objhld_t hld, object_t **removed)
 static object_t *_objtabsrch(const objhld_t hld)
 {
     object_t node;
-    struct avltree_node_t **root, *target;
+    avltree_node_t **root, *target;
 
     root = _hld2root(hld);
     if (unlikely(!root)) {

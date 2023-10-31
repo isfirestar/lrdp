@@ -1,0 +1,31 @@
+{
+    "aeo" : {
+        "bg" : {
+            "setsize" : 100
+        }
+    },
+
+    "threads" : {
+        "demobg" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo_timer.so",
+            "aeo" : "bg"
+        }
+    },
+
+    "timers" : {
+        "gbtimer" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo_timer.so",
+            "interval" : 1000,
+            "timerproc" : "bg_on_timer",
+            "contextsize" : 0,
+            "aeo" : "bg"
+        },
+
+        "fgtimer" : {
+            "module" : "/mnt/d/git/my/lrdp/gmake/libdemo_timer.so",
+            "interval" : 500,
+            "timerproc" : "fg_on_timer",
+            "contextsize" : 0
+        }
+    }
+}

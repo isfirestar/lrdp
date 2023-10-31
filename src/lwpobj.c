@@ -1,11 +1,13 @@
 #include "lwpobj.h"
 #include "lobj.h"
 #include "threading.h"
+#include "aeobj.h"
 
 struct lwp_item
 {
     void *(*execproc)(lobj_pt lop);
     lwp_t thread;
+    lobj_pt lop_aeo;
     unsigned int stacksize;
     unsigned int priority;
     unsigned int ctxsize;
@@ -22,6 +24,10 @@ static void __lwp_free(lobj_pt lop, void *ctx, size_t ctxsize)
     if (lwp_joinable(&lwp->thread)) {
         lwp_join(&lwp->thread, &retval);
     }
+
+    if (lwp->lop_aeo) {
+        lobj_derefer(lwp->lop_aeo);
+    }
 }
 
 static void *__lwp_start_rtn(void *parameter)
@@ -31,10 +37,17 @@ static void *__lwp_start_rtn(void *parameter)
     void *retval;
     void *objctx;
     size_t objctxsize;
+    aeEventLoop *el;
 
     retval = NULL;
     lop = (lobj_pt)parameter;
     lwp = lobj_body(struct lwp_item *, lop);
+
+    // aeo
+    el =  NULL;
+    if (lwp->lop_aeo) {
+        el = aeobj_getel(lwp->lop_aeo);
+    }
 
     /* save name of this thread which specify by json config */
     lwp_setname(&lwp->thread, lobj_get_name(lop));
@@ -48,6 +61,11 @@ static void *__lwp_start_rtn(void *parameter)
     } else {
         objctxsize = lobj_get_context(lop, &objctx);
         lobj_fx_read(lop, objctx, objctxsize);
+    }
+
+    // after thread routine executed, we should run the aeo if exist
+    if (el) {
+        aeobj_run(lwp->lop_aeo);
     }
 
     lobj_ldestroy(lop);
@@ -89,6 +107,8 @@ nsp_status_t lwp_spawn(const jconf_lwp_pt jlwpcfg)
         lwp->stacksize = jlwpcfg->stacksize;
         lwp->priority = jlwpcfg->priority;
         lwp->affinity = jlwpcfg->affinity;
+        // the aeo of this thread
+        lwp->lop_aeo = lobj_refer(jlwpcfg->aeo);
         /* create thread */
         status = lwp_create(&lwp->thread, lwp->priority, &__lwp_start_rtn, lop);
     } while (0);

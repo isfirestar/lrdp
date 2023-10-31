@@ -1,5 +1,4 @@
 #include "timerobj.h"
-
 #include "lobj.h"
 
 struct timerobj
@@ -7,6 +6,7 @@ struct timerobj
     int (*timerproc)(lobj_pt lop);
     unsigned int interval;
     long long evnid;
+    lobj_pt lop_aeo;
     aeEventLoop *el;
 };
 
@@ -36,9 +36,12 @@ static void __timerobj_atexit(lobj_pt lop, void *ctx, size_t ctxsize)
     if (timer->evnid >= 0) {
         aeDeleteTimeEvent(timer->el, timer->evnid);
     }
+    if (timer->lop_aeo) {
+        lobj_derefer(timer->lop_aeo);
+    }
 }
 
-void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
+void timerobj_create(const jconf_timer_pt jtimer, aeEventLoop *el)
 {
     lobj_pt lop;
     struct lobj_fx fx = { NULL };
@@ -62,7 +65,12 @@ void timerobj_create(aeEventLoop *el, const jconf_timer_pt jtimer)
     sym.rawinvokeproc_sym = jtimer->head.rawinvokeproc;
     lobj_fx_cover(lop, &sym);
 
-    timer->el = el;
+    timer->lop_aeo = lobj_refer(jtimer->aeo);
+    if (timer->lop_aeo) {
+        timer->el = aeobj_getel(timer->lop_aeo);
+    } else {
+        timer->el = el;
+    }
     timer->timerproc = lobj_dlsym(lop, jtimer->timerproc);
     timer->interval = jtimer->interval;
     timer->evnid = aeCreateTimeEvent(timer->el, timer->interval, &__timerobj_proc, lop, NULL);

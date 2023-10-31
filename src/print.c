@@ -2,13 +2,14 @@
 
 #include "zmalloc.h"
 #include "clock.h"
+#include "ifos.h"
 
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
 #include <execinfo.h>
 
-static int __print_access = LRDP_PRINT_LEVEL | LRDP_PRINT_FILE | LRDP_PRINT_FUNC | LRDP_PRINT_TIMESTAMP;
+static int __print_access = LRDP_PRINT_LEVEL | LRDP_PRINT_FILE | LRDP_PRINT_FUNC | LRDP_PRINT_TIMESTAMP | LRDP_PRINT_TID;
 
 static void __trace_on_fatal()
 {
@@ -53,6 +54,9 @@ void generical_print(enum genericPrintLevel level, const char *file, int line, c
     if (__print_access & LRDP_PRINT_LEVEL) {
         total  +=  snprintf(NULL, 0,"[%s]", genericPrintLevelText[level]);
     }
+    if (__print_access & LRDP_PRINT_TID) {
+        total += snprintf(NULL, 0, "[%d]", ifos_gettid());
+    }
     if (file && (__print_access & LRDP_PRINT_FILE)) {
         slash = strrchr(file, '/');
         slash = (NULL == slash) ? file : (slash + 1);
@@ -81,7 +85,9 @@ void generical_print(enum genericPrintLevel level, const char *file, int line, c
         if (__print_access & LRDP_PRINT_LEVEL) {
             pos += snprintf(pbuff, total, "[%s]", genericPrintLevelText[level]);
         }
-
+        if (__print_access & LRDP_PRINT_TID) {
+            pos += snprintf(pbuff + pos, total, "[%d]", ifos_gettid());
+        }
         if (file && (__print_access & LRDP_PRINT_FILE)) {
             pos += snprintf(pbuff + pos, total - pos, "[%s:%d]", slash, line);
         }

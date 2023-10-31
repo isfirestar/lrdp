@@ -5,6 +5,7 @@
 struct aeobj_item
 {
     aeEventLoop *el;
+    int setsize;
 };
 
 void __aeo_free(lobj_pt lop, void *ctx, size_t ctxsize)
@@ -41,6 +42,7 @@ lobj_pt aeobj_jcreate(const jconf_aeobj_pt jaecfg)
 {
     lobj_pt lop;
     struct lobj_fx_sym sym = { NULL };
+    struct aeobj_item *aeo;
 
     lop = aeobj_create(jaecfg->head.name, jaecfg->head.module, jaecfg->setsize);
     if (!lop) {
@@ -57,6 +59,12 @@ lobj_pt aeobj_jcreate(const jconf_aeobj_pt jaecfg)
     sym.rawinvokeproc_sym = jaecfg->head.rawinvokeproc;
     lobj_fx_cover(lop, &sym);
 
+    aeo = lobj_body(struct aeobj_item *, lop);
+    aeo->setsize = jaecfg->setsize;
+    if (jaecfg->setsize <= 0) {
+        aeo->setsize = 256;
+    }
+    aeo->el = aeCreateEventLoop(aeo->setsize);
     return lop;
 }
 

@@ -8,12 +8,25 @@
 #include "rawobj.h"
 #include "rand.h"
 #include "monotonic.h"
-#include "ae.h"
-#include "epollobj.h"
+#include "aeobj.h"
 #include "mesgqobj.h"
 #include "aeobj.h"
 #include "udpobj.h"
 #include "print.h"
+
+static void __lrdp_load_aeo()
+{
+    jconf_aeobj_pt jaeo = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_aeobj_get_iterator(&count);
+    while (NULL != (iterator = jconf_aeobj_get(iterator, &jaeo))) {
+        aeobj_jcreate(jaeo);
+    }
+    jconf_aeobj_free();
+}
+
 
 static void __lrdp_load_lwp()
 {
@@ -49,7 +62,7 @@ static void __lrdp_load_timer(aeEventLoop *el)
 
     iterator = jconf_timer_get_iterator(&count);
     while (NULL != (iterator = jconf_timer_get(iterator, &jtimercfg))) {
-        timerobj_create(el, jtimercfg);
+        timerobj_create(jtimercfg, el);
     }
     jconf_timer_free();
 }
@@ -91,19 +104,6 @@ static void __lrdp_load_raw()
         rawobj_create(jrawcfg);
     }
     jconf_rawobj_free();
-}
-
-static void __lrdp_load_epoll()
-{
-    jconf_epollobj_pt jepollcfg = NULL;
-    jconf_iterator_pt iterator;
-    unsigned int count;
-
-    iterator = jconf_epollobj_get_iterator(&count);
-    while (NULL != (iterator = jconf_epollobj_get(iterator, &jepollcfg))) {
-        epollobj_create(jepollcfg);
-    }
-    jconf_epollobj_free();
 }
 
 static void __lrdp_load_mesgq(aeEventLoop *el)
@@ -182,6 +182,9 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    /* load and create aeo component */
+    __lrdp_load_aeo();
+
     /* load and create multi-thread component */
     __lrdp_load_lwp();
 
@@ -199,9 +202,6 @@ int main(int argc, char *argv[])
 
     /* load and create raw object */
     __lrdp_load_raw();
-
-    /* load and create epoll object */
-    __lrdp_load_epoll();
 
     /* load mesgq object */
     __lrdp_load_mesgq(el);

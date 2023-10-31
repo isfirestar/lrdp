@@ -24,6 +24,7 @@ extern void generical_print(enum genericPrintLevel level, const char *file, int 
 #define LRDP_PRINT_FILE				(2)
 #define LRDP_PRINT_FUNC				(4)
 #define LRDP_PRINT_TIMESTAMP		(8)
+#define LRDP_PRINT_TID				(0x10)
 
 extern int lrdp_get_print_access();
 extern void lrdp_set_print_access(int access);
