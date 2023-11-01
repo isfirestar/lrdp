@@ -11,6 +11,10 @@
 
 static int __print_access = LRDP_PRINT_LEVEL | LRDP_PRINT_FILE | LRDP_PRINT_FUNC | LRDP_PRINT_TIMESTAMP | LRDP_PRINT_TID;
 
+// this access shall be use to restrict the print level, every level lower than this will be ignored
+// this access code can be modify by network command and/or redis notify
+static enum genericPrintLevel __level_access = kPrintInfo;
+
 static void __trace_on_fatal()
 {
     void *buffer[100];
@@ -40,7 +44,7 @@ void generical_print(enum genericPrintLevel level, const char *file, int line, c
     datetime_t currst;
     static const char *genericPrintLevelText[5] = { "Info", "Warning", "Error", "Fatal", "Raw" };
 
-    if (level < kPrintInfo ||  level >= kPrintMaximumFunction || (0 == __print_access && !fmt)) {
+    if (level < lrdp_get_print_level_restriction() ||  level >= kPrintMaximumFunction || (0 == __print_access && !fmt)) {
         return;
     }
 
@@ -123,8 +127,18 @@ int lrdp_get_print_access()
 {
     return __atomic_load_n(&__print_access, __ATOMIC_SEQ_CST);
 }
-
 void lrdp_set_print_access(int access)
 {
     __atomic_exchange_n(&__print_access, access, __ATOMIC_SEQ_CST);
+}
+
+enum genericPrintLevel lrdp_get_print_level_restriction()
+{
+    return __atomic_load_n(&__level_access, __ATOMIC_SEQ_CST);
+}
+void lrdp_set_print_level_restriction(enum genericPrintLevel level)
+{
+    if (level > kPrintMinimumFunction && level <= kPrintMaximumFunction) {
+        __atomic_exchange_n(&__level_access, level, __ATOMIC_SEQ_CST);
+    }
 }

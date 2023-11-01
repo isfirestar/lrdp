@@ -4,6 +4,7 @@
 
 enum genericPrintLevel
 {
+	kPrintMinimumFunction = -1,
 	kPrintInfo = 0,
 	kPrintWarning,
 	kPrintError,
@@ -29,4 +30,6 @@ extern void generical_print(enum genericPrintLevel level, const char *file, int 
 extern int lrdp_get_print_access();
 extern void lrdp_set_print_access(int access);
 
+extern enum genericPrintLevel lrdp_get_print_level_restriction();
+extern void lrdp_set_print_level_restriction(enum genericPrintLevel level);
 
