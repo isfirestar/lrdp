@@ -48,9 +48,10 @@ static nsp_status_t _udp_rx_domain(ncb_t *ncb)
     struct sockaddr_un remote;
     udp_data_t c_data;
     nis_event_t c_event;
+    char domain[128];
 
     remote.sun_path[0] = 0;
-    recvcb = ncb_recvdata(ncb, NULL, 0, (struct sockaddr *)&remote, sizeof(remote));
+    recvcb = ncb_recvdata(ncb, NULL, 0, (struct sockaddr_storage *)&remote, sizeof(remote));
     if (recvcb > 0) {
         c_event.Ln.Udp.Link = ncb->hld;
         c_event.Event = EVT_RECEIVEDATA;
@@ -58,7 +59,8 @@ static nsp_status_t _udp_rx_domain(ncb_t *ncb)
         c_data.e.Packet.Size = recvcb;
         c_data.e.Packet.RemoteAddress[0] = 0;
         c_data.e.Packet.RemotePort = 0;
-        c_data.e.Packet.Domain = ((0 == remote.sun_path[0]) ? NULL : &remote.sun_path[0]);
+  	(0 == remote.sun_path[0]) ? strcpy(domain, "ipc:") : snprintf(domain, sizeof(domain), "ipc:%s", &remote.sun_path[0]);
+        c_data.e.Packet.Domain = domain;
         if (ncb->nis_callback) {
             ncb->nis_callback(&c_event, &c_data);
         }
