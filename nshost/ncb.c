@@ -373,7 +373,7 @@ void ncb_post_connected(const ncb_t *ncb)
     ncb->nis_callback(&c_event, NULL);
 }
 
-int ncb_recvdata(ncb_t *ncb, void *data, size_t datalen, struct sockaddr *addr, socklen_t addrlen)
+int ncb_recvdata(ncb_t *ncb, void *data, size_t datalen, struct sockaddr_storage *addr, socklen_t addrlen)
 {
     int cb;
     struct msghdr msg;
