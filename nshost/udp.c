@@ -133,7 +133,7 @@ static nsp_status_t _udp_create_domain(ncb_t *ncb, const char* domain)
                 break;
             }
         }
-        
+
         mxx_call_ecr("success allocate link:%lld, sockfd:%d, binding on domain %s", ncb->hld, ncb->sockfd, domain);
         return ncb->hld;
     } while (0);
@@ -436,7 +436,7 @@ nsp_status_t udp_read(HTCPLINK link, void *data, int size, struct nis_inet_addr 
     if ( !NSP_SUCCESS(status) ) {
         return status;
     }
-    
+
     do {
         /* we didn't allow directly request on a asynchronous target */
         if (ncb_getattr_r(ncb) & LINKATTR_NONBLOCK) {
@@ -446,7 +446,7 @@ nsp_status_t udp_read(HTCPLINK link, void *data, int size, struct nis_inet_addr 
 
         /* invoke sys API here */
         addrlen = sizeof(addr);
-        status = ncb_recvdata(ncb, data, size, (struct sockaddr *)&addr, addrlen);
+        status = ncb_recvdata(ncb, data, size, (struct sockaddr_storage *)&addr, addrlen);
         if (!NSP_SUCCESS(status)) {
             break;
         }
