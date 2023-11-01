@@ -175,7 +175,7 @@ extern
 void ncb_post_connected(const ncb_t *ncb);
 
 extern
-int ncb_recvdata(ncb_t *ncb, void *data, size_t datalen, struct sockaddr *addr, socklen_t addrlen);
+int ncb_recvdata(ncb_t *ncb, void *data, size_t datalen, struct sockaddr_storage *addr, socklen_t addrlen);
 extern
 int ncb_senddata(ncb_t *ncb, const void *data, size_t datalen, const struct sockaddr *addr, socklen_t addrlen);
 extern
