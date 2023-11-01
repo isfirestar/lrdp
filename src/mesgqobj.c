@@ -47,7 +47,7 @@ static int __mesgq_write(lobj_pt lop, const void *data, size_t n)
     return mesgq_sendmsg(mesgq->fd, (const char *)data, n, 0, -1);
 }
 
-static int __mesgq_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+static int __mesgq_vwrite(lobj_pt lop, int elements, const void **vdata, const size_t *vsize)
 {
     struct mesgq_item *mesgq;
     int i;
