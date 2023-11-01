@@ -71,7 +71,7 @@ static int __redisobj_write(lobj_pt lop, const void *data, size_t n)
     return retval;
 }
 
-static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata, size_t *vsize)
+static int __redisobj_vwrite(struct lobj *lop, int elements, const void **vdata, const size_t *vsize)
 {
     struct redisobj *robj;
     redisCallbackFn *redisobjDefaultCallback;
@@ -246,7 +246,7 @@ static int __redisobj_vread_na(lobj_pt lop, int elements, void **vdata, size_t *
     return retval;
 }
 
-static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vdata, size_t *vsize)
+static int __redisobj_vwrite_na(struct lobj *lop, int elements, const void **vdata, const size_t *vsize)
 {
     struct redisobj_na *robjna;
     redisReply *reply;
