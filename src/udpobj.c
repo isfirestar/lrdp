@@ -83,7 +83,7 @@ static int __udpobj_write(lobj_pt lop, const void *data, size_t n)
  *  vdata[0] is pointer to endpoint string or a domain name begin with "ipc:" indicate the target host
  *  vdata[1] is pointer to data which will be send
  */
-static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, const size_t *vsize)
 {
     struct udpobj *obj;
     struct endpoint to;
