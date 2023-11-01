@@ -588,7 +588,7 @@ int lobj_fx_write(lobj_pt lop, const void *data, size_t n)
     return lop->fx.writeproc(lop, data, n);
 }
 
-int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, size_t *vsize)
+int lobj_fx_vwrite(lobj_pt lop, int elements, const void **vdata, const size_t *vsize)
 {
     if (!lop || !vdata || !vsize) {
         return posix__makeerror(EINVAL);
