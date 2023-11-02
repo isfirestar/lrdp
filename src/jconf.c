@@ -92,6 +92,7 @@ static void __jconf_subscriber_load(cJSON *entry);
 static void __jconf_rawobj_load(cJSON *entry);
 static void __jconf_mesgqobj_load(cJSON *entry);
 static void __jconf_udpobj_load(cJSON *entry);
+static void __jconf_tcpobj_load(cJSON *entry);
 
 nsp_status_t jconf_initial_load(const char *jsonfile)
 {
@@ -160,6 +161,8 @@ nsp_status_t jconf_initial_load(const char *jsonfile)
                 __jconf_mesgqobj_load(jcursor);
             } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "udp")) {
                 __jconf_udpobj_load(jcursor);
+            } else if (jcursor->type == cJSON_Object && 0 == strcasecmp(jcursor->string, "tcp")) {
+                __jconf_tcpobj_load(jcursor);
             } else {
                 ;
             }
@@ -1067,25 +1070,25 @@ static void __jconf_udpobj_load(cJSON *entry)
     jcursor = entry->child;
 
     while (jcursor) {
-            udpobj = ztrycalloc(sizeof(*udpobj));
-            if (!udpobj) {
-                break;
-            }
+        udpobj = ztrycalloc(sizeof(*udpobj));
+        if (!udpobj) {
+            break;
+        }
 
-            jnext = __jconf_load_head(jcursor, &udpobj->body.head);
-            while (jnext) {
-                if (0 == strcasecmp(jnext->string, "setsize") && jnext->type == cJSON_Number) {
-                    udpobj->body.setsize = jnext->valueint;
-                } if ( (0 == strcasecmp(jnext->string, "bindon") || 0 == strcasecmp(jnext->string, "local") ) && jnext->type == cJSON_String) {
-                    strncpy(udpobj->body.local, jnext->valuestring, sizeof(udpobj->body.local) - 1);
-                } else {
-                    ;
-                }
-                jnext = jnext->next;
+        jnext = __jconf_load_head(jcursor, &udpobj->body.head);
+        while (jnext) {
+            if (0 == strcasecmp(jnext->string, "setsize") && jnext->type == cJSON_Number) {
+                udpobj->body.setsize = jnext->valueint;
+            } if ( (0 == strcasecmp(jnext->string, "bindon") || 0 == strcasecmp(jnext->string, "local") ) && jnext->type == cJSON_String) {
+                strncpy(udpobj->body.local, jnext->valuestring, sizeof(udpobj->body.local) - 1);
+            } else {
+                ;
             }
+            jnext = jnext->next;
+        }
 
-            list_add_tail(&udpobj->ele_of_inner_udpobj, &g_judpobj_head);
-            judpobj_count++;
+        list_add_tail(&udpobj->ele_of_inner_udpobj, &g_judpobj_head);
+        judpobj_count++;
         jcursor = jcursor->next;
     }
 }
@@ -1139,6 +1142,109 @@ void jconf_udpobj_free()
 
     list_for_each_safe(cursor, next, &g_judpobj_head) {
         inner = container_of(cursor, struct jconf_udpobj_inner, ele_of_inner_udpobj);
+        list_del_init(cursor);
+        zfree(inner);
+    }
+}
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        TCPBJ IMPLEMENTATIONs        ------------------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_tcpobj_inner
+{
+    struct jconf_tcpobj body;
+    struct list_head ele_of_inner_tcpobj;
+};
+
+static struct list_head g_jtcpobj_head = { &g_jtcpobj_head, &g_jtcpobj_head };
+static unsigned int jtcpobj_count = 0;
+
+static void __jconf_tcpobj_load(cJSON *entry)
+{
+    cJSON *jcursor, *jnext;
+    struct jconf_tcpobj_inner *tcpobj;
+
+    jcursor = entry->child;
+
+    while (jcursor) {
+        tcpobj = ztrycalloc(sizeof(*tcpobj));
+        if (!tcpobj) {
+            break;
+        }
+
+        jnext = __jconf_load_head(jcursor, &tcpobj->body.head);
+        while (jnext) {
+            if ( (0 == strcasecmp(jnext->string, "bindon") || 0 == strcasecmp(jnext->string, "local") ) && jnext->type == cJSON_String) {
+                strncpy(tcpobj->body.local, jnext->valuestring, sizeof(tcpobj->body.local) - 1);
+            } else if ( (0 == strcasecmp(jnext->string, "connectto") || 0 == strcasecmp(jnext->string, "remote") ) && jnext->type == cJSON_String) {
+                strncpy(tcpobj->body.remote, jnext->valuestring, sizeof(tcpobj->body.remote) - 1);
+            } else if ( 0 == strcasecmp(jnext->string, "connectedproc") && jnext->type == cJSON_String) {
+                strncpy(tcpobj->body.connectedproc, jnext->valuestring, sizeof(tcpobj->body.connectedproc) - 1);
+            } else if ( 0 == strcasecmp(jnext->string, "disconnectedproc") && jnext->type == cJSON_String) {
+                strncpy(tcpobj->body.disconnectedproc, jnext->valuestring, sizeof(tcpobj->body.disconnectedproc) - 1);
+            } else if ( 0 == strcasecmp(jnext->string, "acceptedproc") && jnext->type == cJSON_String) {
+                strncpy(tcpobj->body.acceptedproc, jnext->valuestring, sizeof(tcpobj->body.acceptedproc) - 1);
+            } else {
+                ;
+            }
+            jnext = jnext->next;
+        }
+
+        list_add_tail(&tcpobj->ele_of_inner_tcpobj, &g_jtcpobj_head);
+        jtcpobj_count++;
+        jcursor = jcursor->next;
+    }
+}
+
+jconf_iterator_pt jconf_tcpobj_get_iterator(unsigned int *count)
+{
+    jconf_iterator_pt iterator;
+
+    if (count) {
+        *count = jtcpobj_count;
+    }
+
+    if (0 == count) {
+        return NULL;
+    }
+
+    iterator = ztrymalloc(sizeof(*iterator));
+    if (!iterator) {
+        return NULL;
+    }
+
+    iterator->cursor = g_jtcpobj_head.next;
+    return iterator;
+}
+
+jconf_iterator_pt jconf_tcpobj_get(jconf_iterator_pt iterator, jconf_tcpobj_pt *jtcpobjs)
+{
+    struct list_head *cursor;
+    struct jconf_tcpobj_inner *inner;
+
+    if (!iterator || !jtcpobjs) {
+        return NULL;
+    }
+
+    cursor = iterator->cursor;
+    if (cursor == &g_jtcpobj_head) {
+        zfree(iterator);
+        return NULL;
+    }
+
+    inner = container_of(cursor, struct jconf_tcpobj_inner, ele_of_inner_tcpobj);
+    *jtcpobjs  = &inner->body;
+    iterator->cursor = cursor->next;
+    return iterator;
+}
+
+void jconf_tcpobj_free()
+{
+    struct list_head *cursor, *next;
+    struct jconf_tcpobj_inner *inner;
+
+    list_for_each_safe(cursor, next, &g_jtcpobj_head) {
+        inner = container_of(cursor, struct jconf_tcpobj_inner, ele_of_inner_tcpobj);
         list_del_init(cursor);
         zfree(inner);
     }

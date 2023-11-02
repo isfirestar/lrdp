@@ -1,12 +1,11 @@
 #include "udpobj.h"
 
 #include "netobj.h"
-#include "udp.h"
+#include "nis.h"
 
 struct udpobj
 {
-    struct endpoint local;
-    char domain[128];
+    endpoint_t local;
     HUDPLINK link;
 };
 
@@ -86,15 +85,16 @@ static int __udpobj_write(lobj_pt lop, const void *data, size_t n)
 static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, const size_t *vsize)
 {
     struct udpobj *obj;
-    struct endpoint to;
+    endpoint_t to;
     nsp_status_t status;
+    enum endpoint_type eptype;
 
     if (!vdata || !vsize || elements < 2) {
-        return -1;
+        return posix__makeerror(EINVAL);
     }
 
     if (!vdata[0] || !vdata[1] || 0 == vsize[0] || 0 == vsize[1]) {
-        return -1;
+        return posix__makeerror(EINVAL);
     }
 
     obj = lobj_body(struct udpobj *, lop);
@@ -102,13 +102,13 @@ static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, const 
         return -1;
     }
 
-    status = netobj_parse_endpoint((const char *)vdata[0], &to);
-    if (!NSP_SUCCESS(status)) {
-        if (0 == strncasecmp("IPC:", (const char *)vdata[0], 4)) {
-            status = udp_write(obj->link, vdata[1], vsize[1], vdata[0], 0, NULL);
-        }
+    eptype = netobj_parse_endpoint((const char *)vdata[0], &to);
+    if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype) {
+        status = udp_write(obj->link, vdata[1], vsize[1], vdata[0], 0, NULL);
+    } else if (ENDPOINT_TYPE_IPv4 == eptype) {
+        status = udp_write(obj->link, vdata[1], vsize[1], to.ipv4, to.port, NULL);
     } else {
-        status = udp_write(obj->link, vdata[1], vsize[1], to.ip, to.port, NULL);
+        return posix__makeerror(EINVAL);
     }
 
     return status;
@@ -120,7 +120,7 @@ lobj_pt udpobj_create(const jconf_udpobj_pt judp)
     struct udpobj *obj;
     struct lobj_fx_sym sym = { NULL };
     struct lobj_fx fx = { NULL };
-    nsp_status_t status;
+    enum endpoint_type eptype;
 
     if (!judp) {
         return NULL;
@@ -149,14 +149,13 @@ lobj_pt udpobj_create(const jconf_udpobj_pt judp)
     sym.rawinvokeproc_sym = judp->head.rawinvokeproc;
     lobj_fx_cover(lop, &sym);
 
-    status = netobj_parse_endpoint(judp->local, &obj->local);
-    if (!NSP_SUCCESS(status)) {
-        if (0 == strncasecmp("IPC:", judp->local, 4)) {
-            strncpy(obj->domain, judp->local, sizeof(obj->domain) - 1);
-            obj->link = udp_create(&__udpobj_common_callback, obj->domain, 0, UDP_FLAG_NONE);
-        }
+    eptype = netobj_parse_endpoint(judp->local, &obj->local);
+    if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype) {
+        obj->link = udp_create(&__udpobj_common_callback, obj->local.domain, 0, UDP_FLAG_NONE);
+    } else if (ENDPOINT_TYPE_IPv4 == eptype) {
+        obj->link = udp_create(&__udpobj_common_callback, obj->local.ipv4, obj->local.port, UDP_FLAG_NONE);
     } else {
-        obj->link = udp_create(&__udpobj_common_callback, obj->local.ip, obj->local.port, UDP_FLAG_NONE);
+        ;
     }
 
     if (INVALID_HUDPLINK == obj->link) {

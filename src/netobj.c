@@ -13,7 +13,7 @@
  *  5. convert port string to unsigned short and copy to endpoint structure "port" filed, use little endian
  *  6. convert ip string to unsigned int and copy to endpoint structure "inet" filed, use little endian
  */
-nsp_status_t netobj_parse_endpoint(const char *epstr, struct endpoint *epo)
+enum endpoint_type netobj_parse_endpoint(const char *epstr, endpoint_pt ept)
 {
     char *p;
     char *nextToken;
@@ -22,23 +22,38 @@ nsp_status_t netobj_parse_endpoint(const char *epstr, struct endpoint *epo)
     unsigned long byteValue;
     int i;
 
-    if ( unlikely(!epstr) || unlikely(!epo) ) {
-        return posix__makeerror(EINVAL);
+    if (unlikely(!ept) ) {
+        return ENDPOINT_TYPE_ILLEGAL;
+    }
+
+    if (!epstr) {
+        strncpy(ept->ipv4, "0.0.0.0", sizeof(ept->ipv4) - 1);
+        ept->inet = 0;
+        ept->port = 0;
+        ept->eptype = ENDPOINT_TYPE_IPv4;
+        return ENDPOINT_TYPE_IPv4;
+    }
+
+    if (0 == epstr[0]) {
+        strncpy(ept->ipv4, "0.0.0.0", sizeof(ept->ipv4) - 1);
+        ept->port = 0;
+        ept->inet = 0;
+        ept->eptype = ENDPOINT_TYPE_IPv4;
+        return ENDPOINT_TYPE_IPv4;
+    }
+
+    if ( 0 == strncasecmp(epstr, "ipc:", 4) ) {
+        strncpy(ept->domain, epstr, sizeof(ept->domain) - 1);
+        ept->eptype = ENDPOINT_TYPE_UNIX_DOMAIN;
+        return ENDPOINT_TYPE_UNIX_DOMAIN;
     }
 
     srclen = strlen(epstr);
     i = 0;
 
-    if (0 == epstr[0]) {
-        strncpy(epo->ip, "0.0.0.0", sizeof(epo->ip) - 1);
-        epo->port = 0;
-        epo->inet = 0;
-        return NSP_STATUS_SUCCESSFUL;
-    }
-
     tmpstr = (char *)ztrymalloc(srclen + 1);
     if ( unlikely(!tmpstr) ) {
-        return posix__makeerror(ENOMEM);
+        return ENDPOINT_TYPE_SYSERR;
     }
     strcpy(tmpstr, epstr);
 
@@ -47,17 +62,20 @@ nsp_status_t netobj_parse_endpoint(const char *epstr, struct endpoint *epo)
         if (i == 0) {
             if (!naos_is_legal_ipv4(p)) {
                 zfree(tmpstr);
-                return posix__makeerror(EINVAL);
+                strncpy(ept->domain, epstr, sizeof(ept->domain) - 1);
+                ept->eptype = ENDPOINT_TYPE_UNIX_DOMAIN;
+                return ENDPOINT_TYPE_UNIX_DOMAIN;
             }
-            strcpy(epo->ip, p);
-            epo->inet = naos_ipv4tou(p, kByteOrder_LittleEndian);
+            strcpy(ept->ipv4, p);
+            ept->inet = naos_ipv4tou(p, kByteOrder_LittleEndian);
         } else if (i == 1) {
             byteValue = strtoul(p, NULL, 10);
-            epo->port = (unsigned short)byteValue;
+            ept->port = (unsigned short)byteValue;
         }
         ++i;
     }
 
     zfree(tmpstr);
-    return NSP_STATUS_SUCCESSFUL;
+    ept->eptype = ENDPOINT_TYPE_IPv4;
+    return ENDPOINT_TYPE_IPv4;
 }

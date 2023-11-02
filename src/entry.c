@@ -12,6 +12,7 @@
 #include "mesgqobj.h"
 #include "aeobj.h"
 #include "udpobj.h"
+#include "tcpobj.h"
 #include "print.h"
 
 static void __lrdp_load_aeo()
@@ -132,6 +133,20 @@ static void __lrdp_load_udp()
     jconf_udpobj_free();
 }
 
+extern lobj_pt tcpobj_create(const jconf_tcpobj_pt jtcp);  // this function can not define in head file "tcpobj.h"
+static void __lrdp_load_tcp()
+{
+    jconf_tcpobj_pt jtcp = NULL;
+    jconf_iterator_pt iterator;
+    unsigned int count;
+
+    iterator = jconf_tcpobj_get_iterator(&count);
+    while (NULL != (iterator = jconf_tcpobj_get(iterator, &jtcp))) {
+        tcpobj_create(jtcp);
+    }
+    jconf_tcpobj_free();
+}
+
 int main(int argc, char *argv[])
 {
     nsp_status_t status;
@@ -208,6 +223,9 @@ int main(int argc, char *argv[])
 
     /* load udp object */
     __lrdp_load_udp();
+
+    /* load tcp object */
+    __lrdp_load_tcp();
 
     /* post init completed message to entry module */
     mloop_post_init(mlop, argc - 2, argv + 2);

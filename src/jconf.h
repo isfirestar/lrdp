@@ -192,3 +192,21 @@ typedef struct jconf_udpobj jconf_udpobj_t, *jconf_udpobj_pt;
 extern jconf_iterator_pt jconf_udpobj_get_iterator(unsigned int *count);
 extern jconf_iterator_pt jconf_udpobj_get(jconf_iterator_pt iterator, jconf_udpobj_pt *judpobj);
 extern void jconf_udpobj_free();
+
+/* -----------------------------------------------------------------------------------------------------------------------------
+ * ------------------------------------------        TCPOBJ IMPLEMENTATIONs        -----------------------------------------
+ * ----------------------------------------------------------------------------------------------------------------------------- */
+struct jconf_tcpobj
+{
+    struct jconf_head head;
+    JCONF_DECLARE_NORMAL_STRING(connectedproc);
+    JCONF_DECLARE_NORMAL_STRING(disconnectedproc);
+    JCONF_DECLARE_NORMAL_STRING(acceptedproc);
+    char local[128];
+    char remote[128];
+};
+typedef struct jconf_tcpobj jconf_tcpobj_t, *jconf_tcpobj_pt;
+
+extern jconf_iterator_pt jconf_tcpobj_get_iterator(unsigned int *count);
+extern jconf_iterator_pt jconf_tcpobj_get(jconf_iterator_pt iterator, jconf_tcpobj_pt *jtcpobj);
+extern void jconf_tcpobj_free();

@@ -9,16 +9,14 @@
 struct redisobj
 {
     redisAsyncContext *c;
-    struct endpoint host;
-    char domain[128];
+    endpoint_t host;
     lobj_pt lop_aeo;
 };
 
 struct redisobj_na
 {
     redisContext *c;
-    struct endpoint host;
-    char domain[128];
+    endpoint_t host;
     aeEventLoop *el;
 };
 
@@ -129,7 +127,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
     struct lobj_fx_sym sym = { NULL };
     lobj_pt lop;
     struct redisobj *robj;
-    nsp_status_t status;
+    enum endpoint_type eptype;
 
     lop = lobj_create(jredis_server_cfg->head.name, NULL, sizeof(struct redisobj), jredis_server_cfg->head.ctxsize, &fx);
     if (!lop) {
@@ -158,15 +156,12 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         }
 
         // get target host
-        status = netobj_parse_endpoint(jredis_server_cfg->host, &robj->host);
-        if (NSP_SUCCESS(status)) {
-            robj->c = redisAsyncConnect(robj->host.ip, robj->host.port);
-        } else {
-            robj->domain[sizeof(robj->domain) - 1] = '\0'; // ensure null-terminated
-            strncpy(robj->domain, jredis_server_cfg->host, sizeof(robj->domain) - 1);
-            robj->c = redisAsyncConnectUnix(robj->domain);
+        eptype = netobj_parse_endpoint(jredis_server_cfg->host, &robj->host);
+        if (ENDPOINT_TYPE_IPv4 == eptype) {
+            robj->c = redisAsyncConnect(robj->host.ipv4, robj->host.port);
+        } else if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype){
+            robj->c = redisAsyncConnectUnix(robj->host.domain);
         }
-
         if (!robj->c) {
             lrdp_generic_error("Connection error: can't allocate redis context");
             break;
@@ -311,7 +306,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
     struct lobj_fx_sym sym = { NULL };
     lobj_pt lop;
     struct redisobj_na *robjna;
-    nsp_status_t status;
+    enum endpoint_type eptype;
 
     lop = lobj_create(jredis_server_cfg->head.name, NULL, sizeof(struct redisobj_na), jredis_server_cfg->head.ctxsize, &fx);
     if (!lop) {
@@ -331,13 +326,11 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
     lobj_fx_cover(lop, &sym);
 
     do {
-        status = netobj_parse_endpoint(jredis_server_cfg->host, &robjna->host);
-        if (NSP_SUCCESS(status)) {
-            robjna->c = redisConnect(robjna->host.ip, robjna->host.port);
-        } else {
-            robjna->domain[sizeof(robjna->domain) - 1] = '\0'; // ensure null-terminated
-            strncpy(robjna->domain, jredis_server_cfg->host, sizeof(robjna->domain) - 1);
-            robjna->c = redisConnectUnix(robjna->domain);
+        eptype = netobj_parse_endpoint(jredis_server_cfg->host, &robjna->host);
+        if (ENDPOINT_TYPE_IPv4 == eptype) {
+            robjna->c = redisConnect(robjna->host.ipv4, robjna->host.port);
+        } else if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype){
+            robjna->c = redisConnectUnix(robjna->host.domain);
         }
         if (!robjna->c) {
             lrdp_generic_error("Connection error: can't allocate redis context");
