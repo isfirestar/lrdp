@@ -1,5 +1,7 @@
 #pragma once
 
+#include <string.h>
+
 enum endpoint_type
 {
     ENDPOINT_TYPE_SYSERR = -1,
@@ -8,6 +10,14 @@ enum endpoint_type
     ENDPOINT_TYPE_IPv4,
     ENDPOINT_TYPE_UNIX_DOMAIN,
 };
+
+struct endpoint_string
+{
+    char inetstr[128];
+};
+typedef struct endpoint_string endpoint_string_t, *endpoint_string_pt;
+
+extern endpoint_string_pt netobj_create_endpoint_string(const char *ipv4, unsigned short port, endpoint_string_pt epstr);
 
 struct endpoint
 {
@@ -23,4 +33,4 @@ struct endpoint
 };
 typedef struct endpoint endpoint_t, *endpoint_pt;
 
-extern enum endpoint_type netobj_parse_endpoint(const char *epstr, endpoint_pt ept);
+extern enum endpoint_type netobj_parse_endpoint(const endpoint_string_pt epstr, endpoint_pt ept);

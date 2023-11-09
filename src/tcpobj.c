@@ -73,14 +73,13 @@ static void __tcpobj_on_accepted(lobj_pt lop, HTCPLINK acceptlink)
     acceptobj->remote.eptype = ENDPOINT_TYPE_IPv4;
 
     // callback to user
-    lobj_fx_on_recvdata(lop, acceptlop, sizeof(lop));
+    lobj_fx_on_recvdata(lop, acceptlop, sizeof(acceptlop));
 }
 
 static void __tcpobj_common_callback(const struct nis_event *event, const void *data)
 {
     const tcp_data_pt tcpdata = (const tcp_data_pt)data;
     HTCPLINK link;
-    struct tcpobj *obj;
     lobj_pt lop;
 
     if (!event || !data) {
@@ -96,10 +95,12 @@ static void __tcpobj_common_callback(const struct nis_event *event, const void *
     if (!lop) {
         return;
     }
-    obj = lobj_body(struct tcpobj *, lop);
+    lobj_raise(lop);  // to increase a reference count
+    //obj = lobj_body(struct tcpobj *, lop);
 
     switch (event->Event) {
         case EVT_RECEIVEDATA:
+            lobj_fx_on_recvdata(lop, tcpdata->e.Packet.Data, tcpdata->e.Packet.Size);
             break;
         case EVT_PRE_CLOSE:
             break;
@@ -112,9 +113,16 @@ static void __tcpobj_common_callback(const struct nis_event *event, const void *
         default:
             break;
     }
+
+    lobj_shrink(lop);  // to decrease a reference count
 }
 
-lobj_pt tcpobj_create(const jconf_tcpobj_pt jtcp)
+lobj_pt tcpobj_create(const struct lobj_fx *fx, const char *name, size_t ctxsize, const endpoint_string_pt *epstr)
+{
+    return NULL;
+}
+
+lobj_pt tcpobj_jcreate(const jconf_tcpobj_pt jtcp)
 {
     lobj_pt lop;
     struct tcpobj *obj;
@@ -149,7 +157,7 @@ lobj_pt tcpobj_create(const jconf_tcpobj_pt jtcp)
     sym.rawinvokeproc_sym = jtcp->head.rawinvokeproc;
     lobj_fx_cover(lop, &sym);
 
-    eptype = netobj_parse_endpoint(jtcp->local, &obj->local);
+    eptype = netobj_parse_endpoint((const endpoint_string_pt)jtcp->local, &obj->local);
     if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype) {
         obj->link = tcp_create2(&__tcpobj_common_callback, obj->local.domain, 0, NULL);
     } else if (ENDPOINT_TYPE_IPv4 == eptype) {

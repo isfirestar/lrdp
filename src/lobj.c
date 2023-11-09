@@ -439,6 +439,32 @@ void *lobj_dlsym(const lobj_pt lop, const char *sym)
     return ifos_dlsym(lop->handle, sym);
 }
 
+void lobj_raise(lobj_pt lop)
+{
+    if (!lop) {
+        return;
+    }
+
+    acquire_spinlock(&g_lobj_container_locker);
+    if (lop->status == LOS_NORMAL) {
+        lop->refcount++;
+    }
+    release_spinlock(&g_lobj_container_locker);
+}
+
+void lobj_shrink(lobj_pt lop)
+{
+    if (!lop) {
+        return;
+    }
+
+    acquire_spinlock(&g_lobj_container_locker);
+    if (lop->refcount > 0) {
+        lop->refcount--;
+    }
+    release_spinlock(&g_lobj_container_locker);
+}
+
 lobj_pt lobj_refer(const char *name)
 {
     lobj_pt lop;

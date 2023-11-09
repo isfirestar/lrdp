@@ -65,6 +65,8 @@ extern void lobj_qdestroy(lobj_seq_t seq);
 extern void lobj_ldestroy(lobj_pt lop);
 
 /* proce for refer/derefer */
+extern void lobj_raise(lobj_pt lop);
+extern void lobj_shrink(lobj_pt lop);
 extern lobj_pt lobj_refer(const char *name);
 extern lobj_pt lobj_qrefer(lobj_seq_t seq);
 extern void lobj_derefer(lobj_pt lop);

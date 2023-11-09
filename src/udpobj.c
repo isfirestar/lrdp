@@ -1,6 +1,6 @@
 #include "udpobj.h"
 
-#include "netobj.h"
+#include "jconf.h"
 #include "nis.h"
 
 struct udpobj
@@ -18,6 +18,18 @@ static void __udpobj_close(lobj_pt lop, void *ctx, size_t ctxsize)
         udp_destroy(obj->link);
         obj->link = INVALID_HUDPLINK;
     }
+}
+
+static void __udpobj_on_pre_close(HUDPLINK link)
+{
+    lobj_pt lop;
+
+    nis_cntl(link, NI_GETCTX, (void **)&lop);
+    if (!lop) {
+        return;
+    }
+
+    __udpobj_close(lop, NULL, 0);
 }
 
 static void __udpobj_on_recvdata(HUDPLINK link, const udp_data_pt udpdata)
@@ -65,6 +77,7 @@ static void __udpobj_common_callback(const struct nis_event *event, const void *
             __udpobj_on_recvdata(event->Ln.Udp.Link, udpdata);
             break;
         case EVT_PRE_CLOSE:
+            __udpobj_on_pre_close(event->Ln.Udp.Link);
             break;
         case EVT_CLOSED:
             break;
@@ -102,7 +115,7 @@ static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, const 
         return -1;
     }
 
-    eptype = netobj_parse_endpoint((const char *)vdata[0], &to);
+    eptype = netobj_parse_endpoint((const endpoint_string_pt)vdata[0], &to);
     if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype) {
         status = udp_write(obj->link, vdata[1], vsize[1], vdata[0], 0, NULL);
     } else if (ENDPOINT_TYPE_IPv4 == eptype) {
@@ -114,42 +127,27 @@ static int __udpobj_vwrite(lobj_pt lop, int elements, const void **vdata, const 
     return status;
 }
 
-lobj_pt udpobj_create(const jconf_udpobj_pt judp)
+lobj_pt udpobj_create(const char *name, const char *module, const endpoint_string_pt local, struct lobj_fx *ifx, size_t ctxsize)
 {
     lobj_pt lop;
     struct udpobj *obj;
-    struct lobj_fx_sym sym = { NULL };
-    struct lobj_fx fx = { NULL };
     enum endpoint_type eptype;
-
-    if (!judp) {
-        return NULL;
-    }
+    struct lobj_fx *pfx, ofx;
 
     udp_init2(0);
 
-    fx.freeproc = &__udpobj_close;
-    fx.writeproc = &__udpobj_write;
-    fx.vwriteproc = &__udpobj_vwrite;
-    lop = lobj_create(judp->head.name, judp->head.module, sizeof(*obj), judp->head.ctxsize, &fx);
+    pfx = (ifx == NULL) ? &ofx : ifx;
+
+    pfx->writeproc = &__udpobj_write;
+    pfx->vwriteproc = &__udpobj_vwrite;
+    lop = lobj_create(name, module, sizeof(*obj), ctxsize, pfx);
     if (!lop) {
         return NULL;
     }
     obj = lobj_body(struct udpobj *, lop);
     obj->link = INVALID_HUDPLINK;
 
-    sym.touchproc_sym = judp->head.touchproc;
-    sym.freeproc_sym = NULL;
-    sym.writeproc_sym = NULL;
-    sym.vwriteproc_sym =  NULL;
-    sym.readproc_sym =  judp->head.readproc;
-    sym.vreadproc_sym = judp->head.vreadproc;
-    sym.recvdataproc_sym = judp->head.recvdataproc;
-    sym.vrecvdataproc_sym = judp->head.vrecvdataproc;
-    sym.rawinvokeproc_sym = judp->head.rawinvokeproc;
-    lobj_fx_cover(lop, &sym);
-
-    eptype = netobj_parse_endpoint(judp->local, &obj->local);
+    eptype = netobj_parse_endpoint((endpoint_string_pt)local, &obj->local);
     if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype) {
         obj->link = udp_create(&__udpobj_common_callback, obj->local.domain, 0, UDP_FLAG_NONE);
     } else if (ENDPOINT_TYPE_IPv4 == eptype) {
@@ -164,5 +162,33 @@ lobj_pt udpobj_create(const jconf_udpobj_pt judp)
     }
 
     nis_cntl(obj->link, NI_SETCTX, lop);
+    return lop;
+}
+
+lobj_pt udpobj_jcreate(const jconf_udpobj_pt judp)
+{
+    lobj_pt lop;
+    struct lobj_fx_sym sym = { NULL };
+
+    if (!judp) {
+        return NULL;
+    }
+
+    lop = udpobj_create(judp->head.name, judp->head.module, (const endpoint_string_pt)judp->local, NULL, judp->head.ctxsize);
+    if (!lop) {
+        return NULL;
+    }
+
+    sym.touchproc_sym = judp->head.touchproc;
+    sym.freeproc_sym = NULL;
+    sym.writeproc_sym = NULL;
+    sym.vwriteproc_sym =  NULL;
+    sym.readproc_sym =  judp->head.readproc;
+    sym.vreadproc_sym = judp->head.vreadproc;
+    sym.recvdataproc_sym = judp->head.recvdataproc;
+    sym.vrecvdataproc_sym = judp->head.vrecvdataproc;
+    sym.rawinvokeproc_sym = judp->head.rawinvokeproc;
+    lobj_fx_cover(lop, &sym);
+
     return lop;
 }

@@ -11,8 +11,6 @@
 #include "aeobj.h"
 #include "mesgqobj.h"
 #include "aeobj.h"
-#include "udpobj.h"
-#include "tcpobj.h"
 #include "print.h"
 
 static void __lrdp_load_aeo()
@@ -120,6 +118,7 @@ static void __lrdp_load_mesgq(aeEventLoop *el)
     jconf_mesgqobj_free();
 }
 
+extern lobj_pt udpobj_jcreate(const jconf_udpobj_pt judp);
 static void __lrdp_load_udp()
 {
     jconf_udpobj_pt judp = NULL;
@@ -128,12 +127,12 @@ static void __lrdp_load_udp()
 
     iterator = jconf_udpobj_get_iterator(&count);
     while (NULL != (iterator = jconf_udpobj_get(iterator, &judp))) {
-        udpobj_create(judp);
+        udpobj_jcreate(judp);
     }
     jconf_udpobj_free();
 }
 
-extern lobj_pt tcpobj_create(const jconf_tcpobj_pt jtcp);  // this function can not define in head file "tcpobj.h"
+extern lobj_pt tcpobj_jcreate(const jconf_tcpobj_pt jtcp);  // this function can not define in head file "tcpobj.h"
 static void __lrdp_load_tcp()
 {
     jconf_tcpobj_pt jtcp = NULL;
@@ -142,7 +141,7 @@ static void __lrdp_load_tcp()
 
     iterator = jconf_tcpobj_get_iterator(&count);
     while (NULL != (iterator = jconf_tcpobj_get(iterator, &jtcp))) {
-        tcpobj_create(jtcp);
+        tcpobj_jcreate(jtcp);
     }
     jconf_tcpobj_free();
 }

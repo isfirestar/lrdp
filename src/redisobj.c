@@ -156,7 +156,7 @@ void redisobj_create(const jconf_redis_server_pt jredis_server_cfg, aeEventLoop 
         }
 
         // get target host
-        eptype = netobj_parse_endpoint(jredis_server_cfg->host, &robj->host);
+        eptype = netobj_parse_endpoint((const endpoint_string_pt)jredis_server_cfg->host, &robj->host);
         if (ENDPOINT_TYPE_IPv4 == eptype) {
             robj->c = redisAsyncConnect(robj->host.ipv4, robj->host.port);
         } else if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype){
@@ -326,7 +326,7 @@ extern void redisobj_create_na(const jconf_redis_server_pt jredis_server_cfg)
     lobj_fx_cover(lop, &sym);
 
     do {
-        eptype = netobj_parse_endpoint(jredis_server_cfg->host, &robjna->host);
+        eptype = netobj_parse_endpoint((const endpoint_string_pt)jredis_server_cfg->host, &robjna->host);
         if (ENDPOINT_TYPE_IPv4 == eptype) {
             robjna->c = redisConnect(robjna->host.ipv4, robjna->host.port);
         } else if (ENDPOINT_TYPE_UNIX_DOMAIN == eptype){
