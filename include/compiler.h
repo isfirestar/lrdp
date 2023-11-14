@@ -268,19 +268,6 @@ static __always_inline int logarithm2(int x)
 #define DEPRECATED(s) __attribute__((deprecated(s)))
 #endif
 
-/* zero float accuracy */
-#if defined EPSINON
-    #undef EPSINON
-#endif
-#define EPSINON  0.000001
-#define is_float_zero(x)    (((x) < EPSINON) && ((x) > -EPSINON))
-#define is_float_eq(n, m)   ((fabsf((n)-(m))) <= EPSINON )
-#define is_float_ne(n, m)   ((fabsf((n)-(m))) > EPSINON)
-#define is_float_gt(n, m)   (((n) - (m)) >   EPSINON)
-#define is_float_ge(n, m)   (((n) - (m)) >= -EPSINON)
-#define is_float_lt(n, m)   (((n) - (m)) <  -EPSINON)
-#define is_float_le(n, m)   (((n) - (m)) <=  EPSINON)
-
 /* looking for the offset/size/posision of any field of structure */
 #if !defined containing_record
     #define containing_record(__address, __type, __field) ((__type *)( (char *)(__address) -  (char *)(&((__type *)0)->__field)))
@@ -474,16 +461,6 @@ static __always_inline void __write_once_size(volatile void *p, void *res, int s
     #undef BITS_P_BYTE
 #endif
 #define BITS_P_BYTE     (8)
-
-#if defined PI
-    #undef PI
-#endif
-#define PI ((double)3.14159265359)
-
-#define angle2radian(n) (((double)(n)) * PI / 180)
-#define radian2angle(n) (((double)(n)) * 180 / PI)
-#define A2R(a)      angle2radian(a)
-#define R2A(r)      radian2angle(r)
 
 enum byte_order_t {
     kByteOrder_LittleEndian = 0,
