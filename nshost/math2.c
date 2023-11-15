@@ -115,12 +115,12 @@ float math2_normalize_angle_f(float sita)
 /* derivation */
 double math2_derivative_lf(const math2_unaryfunction_lfpt f, double x, double dx)
 {
-    return (f(x + h) - f(x)) / dx;
+    return (f(x + dx) - f(x)) / dx;
 }
 
 float math2_derivative_f(const math2_unaryfunction_fpt f, float x, float dx)
 {
-    return (f(x + h) - f(x)) / dx;
+    return (f(x + dx) - f(x)) / dx;
 }
 
 /* factorial */
@@ -174,4 +174,176 @@ long math2_gcd_l(long a, long b)
         b = r;
     }
     return a;
+}
+
+/* statistical mathematics */
+double variance_lf(const long *origin, unsigned int count)
+{
+    unsigned int i;
+    double aveg;
+    long sum;
+
+    if (!origin || 0 == count) {
+        return 0;
+    }
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += origin[i];
+    }
+    aveg = (double)sum / count;
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += (origin[i] - aveg) * (origin[i] - aveg);
+    }
+
+    return (double)sum / count;
+}
+
+float variance_f(const float *origin, unsigned int count)
+{
+    unsigned int i;
+    float aveg, sum;
+
+    if (!origin || 0 == count) {
+        return 0.0f;
+    }
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin[i];
+    }
+    aveg = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += (origin[i] - aveg) * (origin[i] - aveg);
+    }
+
+    return sum / count;
+}
+
+// calc standard deviation of a array
+double stdev_lf(const long *origin, unsigned int count)
+{
+    return sqrt(variance_lf(origin, count));
+}
+float stdev_f(const float *origin, unsigned int count)
+{
+    return sqrtf(variance_f(origin, count));
+}
+
+// calc covariance of two arrays
+double covariance_lf(const long *origin1, const long *origin2, unsigned int count)
+{
+    unsigned int i;
+    double aveg1, aveg2;
+    long sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0;
+    }
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += origin1[i];
+    }
+    aveg1 = (double)sum / count;
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += origin2[i];
+    }
+    aveg2 = (double)sum / count;
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - aveg1) * (origin2[i] - aveg2);
+    }
+
+    return (double)sum / count;
+}
+
+float covariance_f(const float *origin1, const float *origin2, unsigned int count)
+{
+    unsigned int i;
+    float aveg1, aveg2, sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0.0f;
+    }
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin1[i];
+    }
+    aveg1 = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin2[i];
+    }
+    aveg2 = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - aveg1) * (origin2[i] - aveg2);
+    }
+
+    return sum / count;
+}
+
+// mean square error
+// MSE = ∑(y - y')^2 / n,n
+// n is the number of samples
+double mse_lf(const double *origin1, const double *origin2, unsigned int count)
+{
+    unsigned int i;
+    double sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0.0;
+    }
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - origin2[i]) * (origin1[i] - origin2[i]);
+    }
+
+    return sum / count;
+}
+
+float mse_f(const float *origin1, const float *origin2, unsigned int count)
+{
+    unsigned int i;
+    float sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0.0;
+    }
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - origin2[i]) * (origin1[i] - origin2[i]);
+    }
+
+    return sum / count;
+}
+
+double mse_l(const long *origin1, const long *origin2, unsigned int count)
+{
+    unsigned int i;
+    float sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0.0;
+    }
+
+    sum = 0;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - origin2[i]) * (origin1[i] - origin2[i]);
+    }
+
+    return sum / count;
 }
