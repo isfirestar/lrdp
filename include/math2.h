@@ -1,6 +1,18 @@
 #pragma once
 
 #include <math.h>
+#include <stdint.h>
+
+typedef enum {
+    MATH2_FALSE = 0,
+    MATH2_TRUE = 1
+} MATH2_BOOL;
+
+/* common definition of unary functions in math2 */
+typedef double (*math2_unaryfunction_lfpt)(double x);
+typedef float (*math2_unaryfunction_fpt)(float x);
+typedef int (*math2_unaryfunction_pt)(int x);
+typedef long (*math2_unaryfunction_lpt)(long x);
 
 /* zero float accuracy */
 #if defined EPSINON
@@ -59,35 +71,34 @@ extern float asecf(float x);
 extern float acscf(float x);
 
 /* 角度归一到[-Pi, Pi] */
-extern double math2_normalize_angle_lf(double sita);
-extern float math2_normalize_angle_f(float sita);
-
-/* common definition of unary functions in math2 */
-typedef double (*math2_unaryfunction_lfpt)(double x);
-typedef float (*math2_unaryfunction_fpt)(float x);
-typedef int (*math2_unaryfunction_pt)(int x);
-typedef long (*math2_unaryfunction_lpt)(long x);
+extern double normalize_angle_lf(double sita);
+extern float normalize_angle_f(float sita);
 
 /* 常规函数一阶导(derivation) */
-extern double math2_derivative_lf(const math2_unaryfunction_lfpt f, double x, double dx);
-extern float math2_derivative_f(const math2_unaryfunction_fpt f, float x, float dx);
-#define math2_derivative_h(f,x)  math2_derivative_lf((f), (x), EPSINON)
-#define math2_derivative_hf(f,x) math2_derivative_f((f), (x), EPSINONf)
+extern double derivative_lf(const math2_unaryfunction_lfpt f, double x, double dx);
+extern float derivative_f(const math2_unaryfunction_fpt f, float x, float dx);
+#define derivative_h(f,x)  derivative_lf((f), (x), EPSINON)
+#define derivative_hf(f,x) derivative_f((f), (x), EPSINONf)
+extern int differentiable_lf(const double *samples, const uint64_t *us, unsigned int n, double limit, double *gap);
+extern int differentiable_f(const float *samples, const uint64_t *us, unsigned int n, float limit, float *gap);
 
 /* 阶乘和二阶阶乘(factorial and double factorial) */
-extern int math2_factorial(int n);
-extern long math2_factorial_l(long n);
-extern int math2_doublefactorial(int n);
-extern long math2_doublefactorial_l(long n);
+extern int factorial(int n);
+extern long factorial_l(long n);
+extern int doublefactorial(int n);
+extern long doublefactorial_l(long n);
 
 /* 高阶开方 */
-#define math2_radication_lf(x, t) pow((x), 1.0 / (t))
-#define math2_radication_f(x, t) powf((x), 1.0f / (t))
+#define radication_lf(x, t) pow((x), 1.0 / (t))
+#define radication_f(x, t) powf((x), 1.0f / (t))
 
 /* 最大公约数 (GCD, greatest common divisor) */
-extern int math2_gcd(int a, int b);
-extern long math2_gcd_l(long a, long b);
+extern int gcd(int a, int b);
+extern long gcd_l(long a, long b);
 
+/* 平均数 */
+extern double average_lf(const double *origin, unsigned int count);
+extern float average_f(const float *origin, unsigned int count);
 /* 方差 */
 extern double variance_lf(const long *origin, unsigned int count);
 extern float variance_f(const float *origin, unsigned int count);
@@ -101,3 +112,30 @@ extern float covariance_f(const float *origin1, const float *origin2, unsigned i
 extern double mse_lf(const double *origin1, const double *origin2, unsigned int count);
 extern float mse_f(const float *origin1, const float *origin2, unsigned int count);
 extern double mse_l(const long *origin1, const long *origin2, unsigned int count);
+
+/* 产生（a,b）区间上均匀分布的随机数 */
+extern double uniform_random_lf(double a, double b, long *seed);
+extern float uniform_random_f(float a, float b, long *seed);
+
+/* 产生正态分布随机数 : @mean 给定均值, @sigma 给定方差
+ *
+ * 这里遵循正太分布密度函数
+ *              1                  -(x - μ)²
+ * f(x) = —————————————— * e ^ ( —————————————— )
+ *         √(2π) * σ                  2σ²
+ *
+ * 通常使用N(0,1)表示标准正态分布
+ * 设r1,r2,...rn 为（0，1）上n个相互独立的均匀分布的随机数，由于
+ *
+ * E(r1) = E(r2) = ... = E(rn) = 1/2 D(r1) = D(r2) = ... = D(rn) = 1/12
+ * 根据中心极限定理推导, 当 n->∞ 时
+ *
+ *           12
+ *  x = √ (————— ) ∑ (ri - n/2)
+ *           n
+ * 的分布近似于正态分布N(0,1)，通常取n=12,
+ * 最后通过变换y=μ+σx, 便可以得到均值为μ, 方差为σ2 的正太分布随机数。
+ *
+*/
+extern double gaussian_random_lf(double mean, double sigma, long *seed);
+extern float gaussian_random_f(float mean, float sigma, long *seed);
