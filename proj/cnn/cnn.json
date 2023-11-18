@@ -1,0 +1,7 @@
+{
+    "mainloop" : {
+        "module" : "/mnt/d/git/my/lrdp/gmake/libcnn_model.so",
+        "postinitproc" : "cnn_post_init",
+        "contextsize" : 128
+    }
+}

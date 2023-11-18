@@ -8,7 +8,7 @@
 struct mainloop
 {
     int (*preinitproc)(lobj_pt lop, int argc, char **argv);
-    void (*postinitproc)(lobj_pt lop, int argc, char **argv);
+    int (*postinitproc)(lobj_pt lop, int argc, char **argv);
 };
 typedef struct mainloop mainloop_t, *mainloop_pt;
 
@@ -68,16 +68,17 @@ int mloop_pre_init(lobj_pt lop,int argc, char **argv)
     return 0;
 }
 
-void mloop_post_init(lobj_pt lop, int argc, char **argv)
+int mloop_post_init(lobj_pt lop, int argc, char **argv)
 {
     mainloop_pt mloop;
+    int exit;
 
-    if (!lop) {
-        return;
-    }
     mloop = lobj_body(mainloop_pt, lop);
+    exit = 0;
 
     if (mloop->postinitproc) {
-        mloop->postinitproc(lop, argc, argv);
+        exit = mloop->postinitproc(lop, argc, argv);
     }
+
+    return exit;
 }

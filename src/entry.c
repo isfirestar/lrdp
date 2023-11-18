@@ -177,13 +177,6 @@ int main(int argc, char *argv[])
     /* initial object management */
     lobj_init();
 
-    /* initial event loop */
-    aelop = aeobj_create("ae-mloop", NULL, 100);
-    if (!aelop) {
-        return 1;
-    }
-    el = aeobj_getel(aelop);
-
     /* load entry module */
     mlop = mloop_create(jentry);
     if (!mlop) {
@@ -192,7 +185,20 @@ int main(int argc, char *argv[])
 
     /* pre-init applicate */
     if (0 != mloop_pre_init(mlop, argc - 2, argv + 2)) {
-        lrdp_generic_error("Mainloop pre-initial proc prevent program running.");
+        lrdp_generic_info("Mainloop pre-initial proc prevent program running.");
+        return 1;
+    }
+
+    /* initial event loop */
+    aelop = aeobj_create("ae-mloop", NULL, 100);
+    if (!aelop) {
+        lobj_ldestroy(aelop);
+        lrdp_generic_error("aeobj_create failed");
+        return 1;
+    }
+    el = aeobj_getel(aelop);
+    if (!el) {
+        lrdp_generic_error("aeobj_getel failed");
         return 1;
     }
 
@@ -227,10 +233,15 @@ int main(int argc, char *argv[])
     __lrdp_load_tcp();
 
     /* post init completed message to entry module */
-    mloop_post_init(mlop, argc - 2, argv + 2);
+    if (0 != mloop_post_init(mlop, argc - 2, argv + 2)) {
+        lrdp_generic_info("Mainloop post-initial proc prevent program running.");
+        return 1;
+    }
 
-    /* start main loop */
+    /* start event loop */
     aeobj_run(aelop);
+
+    /* release resource */
     lobj_ldestroy(aelop);
     lobj_ldestroy(mlop);
     return 0;

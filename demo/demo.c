@@ -12,7 +12,7 @@ int dep_pre_init(lobj_pt lop, int argc, char **argv)
     return 0;
 }
 
-void dep_post_init(lobj_pt lop)
+int dep_post_init(lobj_pt lop)
 {
     lobj_pt lopr;
     char response[128];
@@ -36,6 +36,8 @@ void dep_post_init(lobj_pt lop)
 
     lobj_fx_vread(lopr, 3, (void **)vdata, vsize);
     lobj_derefer(lopr);
+
+    return 0;
 }
 
 void dep_atexit(lobj_pt lop)
