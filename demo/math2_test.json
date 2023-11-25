@@ -1,0 +1,7 @@
+{
+    "mainloop" : {
+        "module" : "/mnt/d/git/my/lrdp/gmake/libmath2_test.so",
+        "postinitproc" : "math2_test_entry",
+        "contextsize" : 0
+    }
+}

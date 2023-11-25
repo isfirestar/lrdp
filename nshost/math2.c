@@ -174,6 +174,27 @@ MATH2_BOOL is_sequence_differentiable_f(const float samples[3], const uint64_t *
     return 0;
 }
 
+double integral_lf(const math2_unaryfunction_lfpt f, double a, double b, double dx)
+{
+    double sum, x;
+
+    sum = 0.0;
+    for (x = a; x < b; x += dx) {
+        sum += f(x);
+    }
+    return dx * sum;
+}
+float integral_f(const math2_unaryfunction_fpt f, float a, float b, float dx)
+{
+    float sum, x;
+
+    sum = 0.0f;
+    for (x = a; x < b; x += dx) {
+        sum += f(x);
+    }
+    return dx * sum;
+}
+
 /* factorial */
 int factorial(int n)
 {
@@ -455,7 +476,7 @@ float uniform_random_f(float a, float b, long *seed)
 	return t;
 }
 
-double gaussian_random_lf(double mean, double sigma, long *seed)
+double gaussian_normal_lf(double mean, double sigma, long *seed)
 {
 	int i;
 	double x, y;
@@ -468,7 +489,7 @@ double gaussian_random_lf(double mean, double sigma, long *seed)
 	return y;
 }
 
-float gaussian_random_f(float mean, float sigma, long *seed)
+float gaussian_normal_f(float mean, float sigma, long *seed)
 {
 	int i;
 	float x, y;

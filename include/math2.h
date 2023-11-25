@@ -81,6 +81,11 @@ extern float derivative_f(const math2_unaryfunction_fpt f, float x, float dx);
 #define derivative_hf(f,x) derivative_f((f), (x), EPSINONf)
 extern int differentiable_lf(const double *samples, const uint64_t *us, unsigned int n, double limit, double *gap);
 extern int differentiable_f(const float *samples, const uint64_t *us, unsigned int n, float limit, float *gap);
+/* 常规函数定积分 */
+extern double integral_lf(const math2_unaryfunction_lfpt f, double a, double b, double dx);
+extern float integral_f(const math2_unaryfunction_fpt f, float a, float b, float dx);
+#define integral_h(f,a,b)  integral_lf((f), (a), (b), EPSINON)
+#define integral_hf(f,a,b) integral_f((f), (a), (b), EPSINONf)
 
 /* 阶乘和二阶阶乘(factorial and double factorial) */
 extern int factorial(int n);
@@ -137,5 +142,5 @@ extern float uniform_random_f(float a, float b, long *seed);
  * 最后通过变换y=μ+σx, 便可以得到均值为μ, 方差为σ2 的正太分布随机数。
  *
 */
-extern double gaussian_random_lf(double mean, double sigma, long *seed);
-extern float gaussian_random_f(float mean, float sigma, long *seed);
+extern double gaussian_normal_lf(double mean, double sigma, long *seed);
+extern float gaussian_normal_f(float mean, float sigma, long *seed);
