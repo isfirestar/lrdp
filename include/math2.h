@@ -79,6 +79,7 @@ extern double derivative_lf(const math2_unaryfunction_lfpt f, double x, double d
 extern float derivative_f(const math2_unaryfunction_fpt f, float x, float dx);
 #define derivative_h(f,x)  derivative_lf((f), (x), EPSINON)
 #define derivative_hf(f,x) derivative_f((f), (x), EPSINONf)
+/* 连续点可导性 */
 extern int differentiable_lf(const double *samples, const uint64_t *us, unsigned int n, double limit, double *gap);
 extern int differentiable_f(const float *samples, const uint64_t *us, unsigned int n, float limit, float *gap);
 /* 常规函数定积分 */
@@ -144,3 +145,15 @@ extern float uniform_random_f(float a, float b, long *seed);
 */
 extern double gaussian_normal_lf(double mean, double sigma, long *seed);
 extern float gaussian_normal_f(float mean, float sigma, long *seed);
+
+/*  下列方法，用于求三维空间内的俯仰角，偏航角和滚转角
+*/
+extern double pitch_lf(double ax, double ay, double az);
+extern float pitch_f(float ax, float ay, float az);
+extern long pitch_l(long ax, long ay, long az);
+extern double yaw_lf(double ax, double ay, double az);
+extern float yaw_f(float ax, float ay, float az);
+extern long yaw_l(long ax, long ay, long az);
+extern double roll_lf(double ax, double ay, double az);
+extern float roll_f(float ax, float ay, float az);
+extern long roll_l(long ax, long ay, long az);

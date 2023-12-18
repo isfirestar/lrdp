@@ -501,3 +501,42 @@ float gaussian_normal_f(float mean, float sigma, long *seed)
 	y = mean + x * sigma;
 	return y;
 }
+
+double pitch_lf(double ax, double ay, double az)
+{
+    return atan2(ax, sqrt(ay * ay + az * az));
+}
+float pitch_f(float ax, float ay, float az)
+{
+    return atan2f(ax, sqrtf(ay * ay + az * az));
+}
+long pitch_l(long ax, long ay, long az)
+{
+    return atan2l(ax, sqrtl(ay * ay + az * az));
+}
+
+double yaw_lf(double ax, double ay, double az)
+{
+    return atan2(ay, sqrt(ax * ax + az * az));
+}
+float yaw_f(float ax, float ay, float az)
+{
+    return atan2f(ay, sqrtf(ax * ax + az * az));
+}
+long yaw_l(long ax, long ay, long az)
+{
+    return atan2l(ay, sqrtl(ax * ax + az * az));
+}
+
+double roll_lf(double ax, double ay, double az)
+{
+    return atan2(az, sqrt(ax * ax + ay * ay));
+}
+float roll_lf(float ax, float ay, float az)
+{
+    return atan2f(az, sqrtf(ax * ax + ay * ay));
+}
+long roll_lf(long ax, long ay, long az)
+{
+    return atan2l(az, sqrtl(ax * ax + ay * ay));
+}
