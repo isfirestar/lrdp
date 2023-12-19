@@ -540,3 +540,29 @@ long roll_lf(long ax, long ay, long az)
 {
     return atan2l(az, sqrtl(ax * ax + ay * ay));
 }
+
+/* 方位角和仰角 */
+double elevation_lf(double x, double y, double z)
+{
+    return atan2(z, sqrt(x * x + y * y));
+}
+float elevation_f(float x, float y, float z)
+{
+    return atan2f(z, sqrtf(x * x + y * y));
+}
+long elevation_l(long x, long y, long z)
+{
+    return atan2l(z, sqrtl(x * x + y * y));
+}
+double azimuth_lf(double x, double y, double z)
+{
+    return atan2(y, x);
+}
+float azimuth_f(float x, float y, float z)
+{
+    return atan2f(y, x);
+}
+long azimuth_l(long x, long y, long z)
+{
+    return atan2l(y, x);
+}
