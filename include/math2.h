@@ -146,8 +146,12 @@ extern float uniform_random_f(float a, float b, long *seed);
 extern double gaussian_normal_lf(double mean, double sigma, long *seed);
 extern float gaussian_normal_f(float mean, float sigma, long *seed);
 
-/*  下列方法，用于求三维空间内的俯仰角，偏航角和滚转角
-*/
+/*  下列方法，用于求三维空间内的俯仰角，偏航角和滚转角 
+ * 三个轴的方向分别为: x轴向前, y轴向右, z轴向上
+ * 俯仰角: 以x轴为基准, 顺时针旋转为正, 逆时针旋转为负
+ * 航向角: 以y轴为基准, 顺时针旋转为正, 逆时针旋转为负
+ * 横滚角: 以z轴为基准, 顺时针旋转为正, 逆时针旋转为负
+ */
 extern double pitch_lf(double ax, double ay, double az);
 extern float pitch_f(float ax, float ay, float az);
 extern long pitch_l(long ax, long ay, long az);
@@ -157,3 +161,10 @@ extern long yaw_l(long ax, long ay, long az);
 extern double roll_lf(double ax, double ay, double az);
 extern float roll_f(float ax, float ay, float az);
 extern long roll_l(long ax, long ay, long az);
+/* 以下是空间中仰角和方位角的计算 */
+extern double elevation_lf(double x, double y, double z);
+extern float elevation_f(float x, float y, float z);
+extern long elevation_l(long x, long y, long z);
+extern double azimuth_lf(double x, double y, double z);
+extern float azimuth_f(float x, float y, float z);
+extern long azimuth_l(long x, long y, long z);
