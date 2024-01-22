@@ -334,16 +334,16 @@ avltree_node_pt avllowerbound(avltree_node_pt tree, avltree_node_pt node, const 
     int ret;
     avltree_node_pt cursor;
 
+    if (!tree) {
+        return tree;
+    }
+
     ret = compare(node, tree);
     if (ret < 0) {
-        if (tree->lchild) {
-            cursor = avllowerbound(tree->lchild, node, compare);
-            return cursor ? cursor : tree;
-        } else {
-            return tree;
-        }
+        cursor = avllowerbound(tree->lchild, node, compare);
+        return cursor ? cursor : tree;
     } else if (ret > 0) {
-        return tree->rchild ? avllowerbound(tree->rchild, node, compare) : NULL;
+        return avllowerbound(tree->rchild, node, compare);
     } else {
         return tree;
     }
@@ -354,15 +354,15 @@ avltree_node_pt avlupperbound(avltree_node_pt tree, avltree_node_pt node, const 
     int ret;
     avltree_node_pt cursor;
 
-    ret = compare(node, tree);
-    if (ret < 0) {
-        if (tree->lchild) {
-            cursor = avlupperbound(tree->lchild, node, compare);
-            return cursor ? cursor : tree;
-        } else {
-            return tree;
-        }
+    if (!tree) {
+        return tree;
     }
 
-    return tree->rchild ? avlupperbound(tree->rchild, node, compare) : NULL;
+    ret = compare(node, tree);
+    if (ret < 0) {
+        cursor = avlupperbound(tree->lchild, node, compare);
+        return cursor ? cursor : tree;
+    }
+
+    return avlupperbound(tree->rchild, node, compare);
 }
