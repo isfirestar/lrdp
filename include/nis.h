@@ -426,4 +426,8 @@ PORTABLEAPI(nsp_status_t) nis_getifmac(const char *eth_name, char *phyaddr, int 
  */
 PORTABLEAPI(int) nis_cntl(objhld_t link, int cmd, ...);
 
+PORTABLEAPI(HRAWLINK) raw_create(raw_io_fp callback, int fd);
+PORTABLEAPI(void) raw_destroy(HRAWLINK link);
+
+
 #endif

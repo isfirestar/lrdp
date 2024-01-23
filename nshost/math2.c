@@ -532,11 +532,11 @@ double roll_lf(double ax, double ay, double az)
 {
     return atan2(az, sqrt(ax * ax + ay * ay));
 }
-float roll_lf(float ax, float ay, float az)
+float roll_f(float ax, float ay, float az)
 {
     return atan2f(az, sqrtf(ax * ax + ay * ay));
 }
-long roll_lf(long ax, long ay, long az)
+long roll_l(long ax, long ay, long az)
 {
     return atan2l(az, sqrtl(ax * ax + ay * ay));
 }

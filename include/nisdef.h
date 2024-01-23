@@ -25,6 +25,7 @@ typedef objhld_t HLNK;
 typedef HLNK HTCPLINK;
 typedef HLNK HUDPLINK;
 typedef HLNK HARPLINK;
+typedef HLNK HRAWLINK;
 
 /* common string type */
 // typedef abuff_type(6)   abuff_mac_t;        /* binary buffer to hold a MAC address */
@@ -38,6 +39,8 @@ typedef HLNK HARPLINK;
 #if !defined INVALID_HUDPLINK
     #define INVALID_HUDPLINK ((HUDPLINK)(~0))
 #endif
+
+#define INVALID_HRAWLINK ((HRAWLINK)(~0))
 
 /* common network events */
 #define EVT_PRE_CLOSE   (0x0002)    /* ready to close*/
@@ -106,6 +109,7 @@ typedef struct nis_event nis_event_t;
 typedef void( STDCALL *nis_callback_fp)(const struct nis_event *event, const void *data);
 typedef nis_callback_fp tcp_io_fp;
 typedef nis_callback_fp udp_io_fp;
+typedef nis_callback_fp raw_io_fp;
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------
     TCP implement
@@ -202,6 +206,25 @@ struct nis_udp_data {
 } __POSIX_TYPE_ALIGNED__;
 
 typedef struct nis_udp_data udp_data_t, *udp_data_pt;
+
+/*---------------------------------------------------------------------------------------------------------------------------------------------------------
+    RAW implement
+---------------------------------------------------------------------------------------------------------------------------------------------------------*/
+struct nis_raw_data {
+    union {
+        struct {
+            const unsigned char *Data;
+            int Size;
+        } Packet;
+
+        /* only used in case of EVT_PRE_CLOSE,
+            @Context  pointer to user defined context of each link object */
+        struct {
+            void *Context;
+        } PreClose;
+    } e;
+} __POSIX_TYPE_ALIGNED__;
+typedef struct nis_raw_data raw_data_t;
 
 /*---------------------------------------------------------------------------------------------------------------------------------------------------------
     GRP implement
