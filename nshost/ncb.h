@@ -51,7 +51,7 @@ struct _ncb {
     /* Rx thread-id binding upon epoll */
     pid_t rx_tid;
 
-    /* the IP protocol type of this ncb, only support these two types:IPPROTO_TCP/IPPROTO_UDP */
+    /* the IP protocol type of this ncb, only support these two types:IPPROTO_TCP/IPPROTO_UDP/IPPROTO_RAW */
     int protocol;
 
     /* the link entry of all ncb object */

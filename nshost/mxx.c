@@ -16,6 +16,7 @@
 
 #include "tcp.h"
 #include "udp.h"
+#include "raw.h"
 
 /* use command: strings nshost.so.9.9.1 | grep 'COMPILE DATE'
     to query the compile date of specify ELF file */
@@ -236,6 +237,8 @@ int nis_cntl(objhld_t link, int cmd, ...)
                 tcp_setattr_r(ncb, va_arg(ap, int));
             } else if (ncb->protocol == IPPROTO_UDP) {
                 udp_setattr_r(ncb, va_arg(ap, int));
+            } else if (IPPROTO_RAW == ncb->protocol) {
+                raw_setattr_r(ncb, va_arg(ap, int));
             } else {
                 retval = -1;
             }

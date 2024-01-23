@@ -330,7 +330,7 @@ static void _io_uninit(struct io_object_block *obptr)
 
 static struct io_object_block **_io_locate_protocol(int protocol)
 {
-    if (IPPROTO_TCP == protocol) {
+    if (IPPROTO_TCP == protocol || IPPROTO_RAW == protocol) {
         return &_iomgr.tcpio;
     } else if (IPPROTO_UDP == protocol) {
         return &_iomgr.udpio;

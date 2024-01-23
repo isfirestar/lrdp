@@ -17,7 +17,7 @@ static nsp_status_t _rawrefr( objhld_t hld, ncb_t **ncb )
 
     *ncb = objrefr( hld );
     if ( NULL != (*ncb) ) {
-        if (likely(-1 == (*ncb)->protocol)) {
+        if (likely(IPPROTO_RAW == (*ncb)->protocol)) {
             return NSP_STATUS_SUCCESSFUL;
         }
 
@@ -119,7 +119,7 @@ HRAWLINK raw_create(raw_io_fp callback, int fd)
     assert(ncb);
 
     ncb->hld = hld;
-    ncb->protocol = -1;
+    ncb->protocol = IPPROTO_RAW;
     ncb->nis_callback = callback;
 
     do {
@@ -319,4 +319,9 @@ nsp_status_t raw_write(HRAWLINK link, const void *origin, int size, const nis_se
     }*/
 
     return status;
+}
+
+void raw_setattr_r(ncb_t *ncb, int attr)
+{
+    ncb_setattr_r(ncb, attr);
 }

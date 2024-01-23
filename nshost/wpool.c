@@ -41,7 +41,7 @@ static struct wp_manager _wpmgr = {
     .mutex = { PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP },
      };
 
-#define _wp_locate_protocol(p) (((IPPROTO_TCP == (p)) ? &_wpmgr._wptcp : ((IPPROTO_UDP == (p)) ? &_wpmgr._wpudp : NULL)))
+#define _wp_locate_protocol(p) (((IPPROTO_TCP == (p) || (IPPROTO_RAW)==(p)) ? &_wpmgr._wptcp : ((IPPROTO_UDP == (p)) ? &_wpmgr._wpudp : NULL)))
 
 static struct wpool *_wp_safe_retain(int protocol)
 {

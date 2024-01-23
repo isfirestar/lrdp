@@ -190,6 +190,12 @@ PORTABLEAPI(nsp_status_t) tcp_getipcpath(HTCPLINK link, const char **path);
 PORTABLEAPI(nsp_status_t) tcp_setopt(HTCPLINK link, int level, int opt, const char *val, int len);
 PORTABLEAPI(nsp_status_t) tcp_getopt(HTCPLINK link, int level, int opt, char *val, int *len);
 
+/* raw is a lite module for caller to manage raw-specified file-descriptor, use the same IO callback as TCP
+ * caller shall initial raw pool by invoke @tcp_init
+*/
+PORTABLEAPI(HRAWLINK) raw_create(raw_io_fp callback, int fd);
+PORTABLEAPI(void) raw_destroy(HRAWLINK link);
+
 /* @udp_init use to initialzie UDP framework, invoke before any other UDP relate function call.
    @udp_uninit use to uninitialize UDP framework and release resource
    usually, large than or equal to zero return value indicate success, negative return value indicate error detected.
@@ -425,9 +431,6 @@ PORTABLEAPI(nsp_status_t) nis_getifmac(const char *eth_name, char *phyaddr, int 
  *		query the Rx thread-id of @link which bind and managed in epoll or IOCP
  */
 PORTABLEAPI(int) nis_cntl(objhld_t link, int cmd, ...);
-
-PORTABLEAPI(HRAWLINK) raw_create(raw_io_fp callback, int fd);
-PORTABLEAPI(void) raw_destroy(HRAWLINK link);
 
 
 #endif
