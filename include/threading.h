@@ -184,9 +184,9 @@ PORTABLEAPI(void) lwp_event_uninit(lwp_event_t *evo);
 #define lwp_create_notification_event(evoptr, status)    lwp_create_event(evoptr, LWPEC_NOTIFY, status)
 
 /* definition table of return value cause by @lwp_event_wait:
- *                    NSP_ERROR_STATUS_EQUAL(ETIMEDOUT)     : timeout specified by @expire expire
+ *                    NSP_FAILED_AND_ERROR_EQUAL(ETIMEDOUT)     : timeout specified by @expire expire
  *                               NSP_STATUS_SUCCESSFUL      : singal awakened
- * !NSP_SUCCESS() && !NSP_ERROR_STATUS_EQUAL(ETIMEDOUT)     : system level error trigger
+ * !NSP_SUCCESS() && !NSP_FAILED_AND_ERROR_EQUAL(ETIMEDOUT)     : system level error trigger
  *
  * demo:
  *   lwp_event_t event;
@@ -194,7 +194,7 @@ PORTABLEAPI(void) lwp_event_uninit(lwp_event_t *evo);
  *   lwp_event_init(&event, LWPEC_SYNC);
  *   nsp_status_t status = lwp_event_wait(&event, 1000);
  *   if (!NSP_SUCCESS(status)) {
- *       if (NSP_ERROR_STATUS_EQUAL(status, ETIMEDOUT)) {
+ *       if (NSP_FAILED_AND_ERROR_EQUAL(status, ETIMEDOUT)) {
  *           lwp_event_uninit(&event);
  *           return 1;
  *       }

@@ -20,6 +20,9 @@ typedef struct __datetime_t datetime_t;
 PORTABLEAPI(uint64_t) clock_monotonic_raw();
 PORTABLEAPI(uint64_t) clock_monotonic();
 
+#define clock_monotonic_us()   clock_monotonic() / 10
+#define clock_monotonic_ms()   clock_monotonic() / 10000
+
 /* realtime clock */
 PORTABLEAPI(uint64_t) clock_realtime();
 

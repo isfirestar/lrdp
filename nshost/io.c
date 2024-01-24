@@ -607,22 +607,25 @@ void io_close(void *ncbptr)
            While one thread is blocked in a call to epoll_pwait(2),
            it is possible for another thread to add a file descriptor to the waited-upon epoll instance.
            If the new file descriptor becomes ready, it will cause the epoll_wait(2) call to unblock.
-            For a discussion of what may happen if a file descriptor in an epoll instance being monitored by epoll_wait(2) is closed in another thread,
-            see select(2)
+           For a discussion of what may happen if a file descriptor in an epoll instance being monitored by epoll_wait(2) is closed in another thread,
+           see select(2)
 
-            If a file descriptor being monitored by select(2) is closed in another thread,
-            the result is unspecified. On some UNIX systems, select(2) unblocks and returns,
-            with an indication that the file descriptor is ready (a subsequent I/O operation will likely fail with an error,
-            unless another the file descriptor reopened between the time select(2) returned and the I/O operations was performed).
-            On Linux (and some other systems), closing the file descriptor in another thread has no effect on select(2).
-            In summary, any application that relies on a particular behavior in this scenario must be considered buggy
+           If a file descriptor being monitored by select(2) is closed in another thread,
+           the result is unspecified. On some UNIX systems, select(2) unblocks and returns,
+           with an indication that the file descriptor is ready (a subsequent I/O operation will likely fail with an error,
+           unless another the file descriptor reopened between the time select(2) returned and the I/O operations was performed).
+           On Linux (and some other systems), closing the file descriptor in another thread has no effect on select(2).
+           In summary, any application that relies on a particular behavior in this scenario must be considered buggy
         */
         if (ncb->epfd > 0){
             io_detach(ncb);
             ncb->epfd = -1;
         }
 
-        shutdown(ncb->sockfd, SHUT_RDWR);
+        if (IPPROTO_TCP == ncb->protocol || IPPROTO_UDP == ncb->protocol) {
+            shutdown(ncb->sockfd, SHUT_RDWR);
+        }
+
         close(ncb->sockfd);
         ncb->sockfd = -1;
     }

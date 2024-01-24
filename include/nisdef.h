@@ -24,22 +24,10 @@
 typedef objhld_t HLNK;
 typedef HLNK HTCPLINK;
 typedef HLNK HUDPLINK;
-typedef HLNK HARPLINK;
 typedef HLNK HRAWLINK;
 
-/* common string type */
-// typedef abuff_type(6)   abuff_mac_t;        /* binary buffer to hold a MAC address */
-// typedef abuff_type(16)  abuff_ddn_ipv4_t;   /* DDN is a abbreviation of "Dotted Decimal Notation" - one way to representation a IPv4 address  */
-// typedef abuff_type(112) abuff_ipc_path_t;   /* a string with maximum length to hold a legal IPC file path including prefix */
-
-#if !defined INVALID_HTCPLINK
-    #define INVALID_HTCPLINK ((HTCPLINK)(~0))
-#endif
-
-#if !defined INVALID_HUDPLINK
-    #define INVALID_HUDPLINK ((HUDPLINK)(~0))
-#endif
-
+#define INVALID_HTCPLINK ((HTCPLINK)(~0))
+#define INVALID_HUDPLINK ((HUDPLINK)(~0))
 #define INVALID_HRAWLINK ((HRAWLINK)(~0))
 
 /* common network events */
@@ -103,7 +91,7 @@ struct nis_event {
 
         struct {
             HRAWLINK link;
-        } Raw; 
+        } Raw;
     } Ln;
 } __POSIX_TYPE_ALIGNED__;
 

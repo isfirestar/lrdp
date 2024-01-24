@@ -194,6 +194,7 @@ PORTABLEAPI(nsp_status_t) tcp_getopt(HTCPLINK link, int level, int opt, char *va
  * caller shall initial raw pool by invoke @tcp_init
 */
 PORTABLEAPI(HRAWLINK) raw_create(raw_io_fp callback, int fd);
+PORTABLEAPI(nsp_status_t) raw_write(HRAWLINK link, const void *origin, int size, const nis_serializer_fp serializer);
 PORTABLEAPI(void) raw_destroy(HRAWLINK link);
 
 /* @udp_init use to initialzie UDP framework, invoke before any other UDP relate function call.
