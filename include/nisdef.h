@@ -100,6 +100,10 @@ struct nis_event {
         struct {
             HUDPLINK Link;
         } Udp;
+
+        struct {
+            HRAWLINK link;
+        } Raw; 
     } Ln;
 } __POSIX_TYPE_ALIGNED__;
 
