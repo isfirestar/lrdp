@@ -103,22 +103,25 @@ extern int gcd(int a, int b);
 extern long gcd_l(long a, long b);
 
 /* 平均数 */
-extern double average_lf(const double *origin, unsigned int count);
+extern double average_l(const long *origin, unsigned int count);
 extern float average_f(const float *origin, unsigned int count);
+extern double average_lf(const double *origin, unsigned int count);
 /* 方差 */
-extern double variance_lf(const long *origin, unsigned int count);
+extern double variance_l(const long *origin, unsigned int count);
 extern float variance_f(const float *origin, unsigned int count);
+extern double variance_lf(const double *origin, unsigned int count);
 /* 标准差 */
-extern double stdev_lf(const long *origin, unsigned int count);
+extern double stdev_l(const long *origin, unsigned int count);
 extern float stdev_f(const float *origin, unsigned int count);
+extern double stdev_lf(const double *origin, unsigned int count);
 /* 协方差 */
-extern double covariance_lf(const long *origin1, const long *origin2, unsigned int count);
+extern double covariance_l(const long *origin1, const long *origin2, unsigned int count);
 extern float covariance_f(const float *origin1, const float *origin2, unsigned int count);
+extern double covariance_lf(const double *origin1, const double *origin2, unsigned int count);
 /* 均方误差(MSE, mean square error) */
-extern double mse_lf(const double *origin1, const double *origin2, unsigned int count);
-extern float mse_f(const float *origin1, const float *origin2, unsigned int count);
 extern double mse_l(const long *origin1, const long *origin2, unsigned int count);
-
+extern float mse_f(const float *origin1, const float *origin2, unsigned int count);
+extern double mse_lf(const double *origin1, const double *origin2, unsigned int count);
 /* 产生（a,b）区间上均匀分布的随机数 */
 extern double uniform_random_lf(double a, double b, long *seed);
 extern float uniform_random_f(float a, float b, long *seed);
@@ -146,7 +149,7 @@ extern float uniform_random_f(float a, float b, long *seed);
 extern double gaussian_normal_lf(double mean, double sigma, long *seed);
 extern float gaussian_normal_f(float mean, float sigma, long *seed);
 
-/*  下列方法，用于求三维空间内的俯仰角，偏航角和滚转角 
+/*  下列方法，用于求三维空间内的俯仰角，偏航角和滚转角
  * 三个轴的方向分别为: x轴向前, y轴向右, z轴向上
  * 俯仰角: 以x轴为基准, 顺时针旋转为正, 逆时针旋转为负
  * 航向角: 以y轴为基准, 顺时针旋转为正, 逆时针旋转为负

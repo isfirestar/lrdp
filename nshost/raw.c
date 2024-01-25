@@ -219,6 +219,7 @@ void raw_destroy(HRAWLINK link)
     }
 
     mxx_call_ecr("link:%lld order to destroy", ncb->hld);
+    objclos(link);
     objdefr(link);
 }
 

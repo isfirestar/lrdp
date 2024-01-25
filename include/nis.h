@@ -192,6 +192,8 @@ PORTABLEAPI(nsp_status_t) tcp_getopt(HTCPLINK link, int level, int opt, char *va
 
 /* raw is a lite module for caller to manage raw-specified file-descriptor, use the same IO callback as TCP
  * caller shall initial raw pool by invoke @tcp_init
+ *
+ * some special case, caller may want to use raw module to manage a file-descriptor which is NOT a TCP socket, for example: tty, serial port, etc.
 */
 PORTABLEAPI(HRAWLINK) raw_create(raw_io_fp callback, int fd);
 PORTABLEAPI(nsp_status_t) raw_write(HRAWLINK link, const void *origin, int size, const nis_serializer_fp serializer);

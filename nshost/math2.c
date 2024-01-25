@@ -249,10 +249,10 @@ long gcd_l(long a, long b)
 }
 
 /* statistical mathematics */
-double average_lf(const double *origin, unsigned int count)
+double average_l(const long *origin, unsigned int count)
 {
     unsigned int i;
-    double sum;
+    long sum;
 
     if (!origin || 0 == count) {
         return 0.0;
@@ -263,7 +263,7 @@ double average_lf(const double *origin, unsigned int count)
         sum += origin[i];
     }
 
-    return sum / count;
+    return (double)sum / count;
 }
 
 float average_f(const float *origin, unsigned int count)
@@ -283,7 +283,24 @@ float average_f(const float *origin, unsigned int count)
     return sum / count;
 }
 
-double variance_lf(const long *origin, unsigned int count)
+double average_lf(const double *origin, unsigned int count)
+{
+    unsigned int i;
+    double sum;
+
+    if (!origin || 0 == count) {
+        return 0.0;
+    }
+
+    sum = 0.0;
+    for (i = 0; i < count; i++) {
+        sum += origin[i];
+    }
+
+    return sum / count;
+}
+
+double variance_l(const long *origin, unsigned int count)
 {
     unsigned int i;
     double aveg;
@@ -330,18 +347,45 @@ float variance_f(const float *origin, unsigned int count)
     return sum / count;
 }
 
-// calc standard deviation of a array
-double stdev_lf(const long *origin, unsigned int count)
+double variance_lf(const double *origin, unsigned int count)
 {
-    return sqrt(variance_lf(origin, count));
+    unsigned int i;
+    double aveg, sum;
+
+    if (!origin || 0 == count) {
+        return 0.0f;
+    }
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin[i];
+    }
+    aveg = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += (origin[i] - aveg) * (origin[i] - aveg);
+    }
+
+    return sum / count;
+}
+
+// calc standard deviation of a array
+double stdev_l(const long *origin, unsigned int count)
+{
+    return sqrt(variance_l(origin, count));
 }
 float stdev_f(const float *origin, unsigned int count)
 {
     return sqrtf(variance_f(origin, count));
 }
+double stdev_lf(const double *origin, unsigned int count)
+{
+    return sqrt(variance_lf(origin, count));
+}
 
 // calc covariance of two arrays
-double covariance_lf(const long *origin1, const long *origin2, unsigned int count)
+double covariance_l(const long *origin1, const long *origin2, unsigned int count)
 {
     unsigned int i;
     double aveg1, aveg2;
@@ -375,6 +419,35 @@ float covariance_f(const float *origin1, const float *origin2, unsigned int coun
 {
     unsigned int i;
     float aveg1, aveg2, sum;
+
+    if (!origin1 || !origin2 || 0 == count) {
+        return 0.0f;
+    }
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin1[i];
+    }
+    aveg1 = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += origin2[i];
+    }
+    aveg2 = sum / count;
+
+    sum = 0.0f;
+    for (i = 0; i < count; i++) {
+        sum += (origin1[i] - aveg1) * (origin2[i] - aveg2);
+    }
+
+    return sum / count;
+}
+
+double covariance_lf(const double *origin1, const double *origin2, unsigned int count)
+{
+    unsigned int i;
+    double aveg1, aveg2, sum;
 
     if (!origin1 || !origin2 || 0 == count) {
         return 0.0f;
