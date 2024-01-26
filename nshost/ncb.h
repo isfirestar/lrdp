@@ -120,6 +120,11 @@ struct _ncb {
         struct {
             objhld_t trigger;
         } pipe;
+
+        struct {
+            lwp_mutex_t mutex;
+            int duplex;
+        } raw;
     } u;
 };
 typedef struct _ncb ncb_t;

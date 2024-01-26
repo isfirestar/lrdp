@@ -49,7 +49,14 @@ static nsp_status_t _raw_rx(ncb_t *ncb)
     raw_data_t c_data;
     nis_event_t c_event;
 
+    if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
+        lwp_mutex_lock(&ncb->u.raw.mutex);
+    }
     rxcb = read(ncb->sockfd, ncb->rx_buffer, ncb->rx_buffer_size);
+    if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
+        lwp_mutex_unlock(&ncb->u.raw.mutex);
+    }
+
     if (rxcb > 0) {
         c_event.Ln.Udp.Link = ncb->hld;
         c_event.Event = EVT_RECEIVEDATA;
@@ -137,6 +144,10 @@ HRAWLINK raw_create(raw_io_fp callback, int fd)
         /* set the fd to non-blocking mode */
         io_set_nonblock(ncb->sockfd, 1);
 
+        /* initial mutex lock for half-duplex file */
+        ncb->u.raw.duplex = 0;
+        lwp_mutex_init(&ncb->u.raw.mutex, 0);
+
         /* attach to epoll */
         if (ncb->nis_callback) {
             status = io_attach(ncb, EPOLLIN);
@@ -166,7 +177,13 @@ nsp_status_t raw_txn(ncb_t *ncb, void *p)
 	}
 
     while (node->offset < node->wcb) {
+        if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
+            lwp_mutex_lock(&ncb->u.raw.mutex);
+        }
         wcb = write(ncb->sockfd, node->data + node->offset, node->wcb - node->offset);
+        if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
+            lwp_mutex_unlock(&ncb->u.raw.mutex);
+        }
 
         /* fatal-error/connection-terminated  */
         if (0 == wcb) {
@@ -325,4 +342,11 @@ nsp_status_t raw_write(HRAWLINK link, const void *origin, int size, const nis_se
 void raw_setattr_r(ncb_t *ncb, int attr)
 {
     ncb_setattr_r(ncb, attr);
+}
+
+void raw_set_duplex(ncb_t *ncb, int duplex)
+{
+    if (ncb) {
+        __atomic_store_n(&ncb->u.raw.duplex, duplex, __ATOMIC_RELEASE);
+    }
 }

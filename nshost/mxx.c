@@ -268,6 +268,9 @@ int nis_cntl(objhld_t link, int cmd, ...)
         case NI_GETRXTID:
             retval = (int)ncb->rx_tid;
             break;
+        case NI_SETDUPLEX:
+            raw_set_duplex(ncb, va_arg(ap, int));
+            break;
         default:
             retval = posix__makeerror(EINVAL);
             break;

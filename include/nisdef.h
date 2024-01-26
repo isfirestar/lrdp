@@ -67,6 +67,7 @@ typedef HLNK HRAWLINK;
 #define NI_GETAF            (8)     /* obtain address family */
 #define NI_GETPROTO         (9)     /* obtain protocol dependency */
 #define NI_GETRXTID         (10)    /* obtain Rx thread id(which managed in epoll or IOCP)  */
+#define NI_SETDUPLEX        (11)    /* let raw file to duplex/half-duplex mode, default setting of raw file descriptor are not duplex */
 
 /* the dotted decimal notation for IPv4 or IPv6 */
 struct nis_inet_addr {
