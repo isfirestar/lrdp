@@ -51,10 +51,10 @@ static nsp_status_t _raw_rx(ncb_t *ncb)
 
     if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
         lwp_mutex_lock(&ncb->u.raw.mutex);
-    }
-    rxcb = read(ncb->sockfd, ncb->rx_buffer, ncb->rx_buffer_size);
-    if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
-        lwp_mutex_unlock(&ncb->u.raw.mutex);
+	rxcb = read(ncb->sockfd, ncb->rx_buffer, ncb->rx_buffer_size);
+	lwp_mutex_unlock(&ncb->u.raw.mutex);
+    } else {
+	rxcb = read(ncb->sockfd, ncb->rx_buffer, ncb->rx_buffer_size);
     }
 
     if (rxcb > 0) {
@@ -92,12 +92,6 @@ nsp_status_t raw_rx(ncb_t *ncb)
     int available;
 
     do {
-        if (0 == ioctl(ncb->sockfd, FIONREAD, &available)) {
-            if (0 == available) {
-                status = posix__makeerror(EAGAIN);
-                break;
-            }
-        }
         status = _raw_rx(ncb);
     } while(NSP_SUCCESS(status));
     return status;
@@ -179,12 +173,12 @@ nsp_status_t raw_txn(ncb_t *ncb, void *p)
     while (node->offset < node->wcb) {
         if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
             lwp_mutex_lock(&ncb->u.raw.mutex);
-        }
-        wcb = write(ncb->sockfd, node->data + node->offset, node->wcb - node->offset);
-        if (!__atomic_load_n(&ncb->u.raw.duplex, __ATOMIC_ACQUIRE)) {
-            lwp_mutex_unlock(&ncb->u.raw.mutex);
-        }
-
+			wcb = write(ncb->sockfd, node->data + node->offset, node->wcb - node->offset);
+			lwp_mutex_unlock(&ncb->u.raw.mutex);
+        } else {
+	    	wcb = write(ncb->sockfd, node->data + node->offset, node->wcb - node->offset);
+		}
+		
         /* fatal-error/connection-terminated  */
         if (0 == wcb) {
             mxx_call_ecr("Fatal error occurred syscall write(2), the return value equal to zero, link:%lld", ncb->hld);
