@@ -91,7 +91,7 @@ struct nis_event {
         } Udp;
 
         struct {
-            HRAWLINK link;
+            HRAWLINK Link;
         } Raw;
     } Ln;
 } __POSIX_TYPE_ALIGNED__;
